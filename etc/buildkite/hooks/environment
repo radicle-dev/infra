@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -eou pipefail
+IFS=$'\n\t'
+
+if [[ "${BUILDKITE_REPO}" =~ (https|git)://github.com/oscoin/* ]]
+then
+    declare -rx DOCKER_RUNTIME=runc
+
+    # TODO:
+    #
+    # * Should  we separate caches per-branch? I.e. limit bloat when there are a
+    #   lot of experimental branches which never make it to master
+    # * Should definitely enforce quota per-pipeline. Would require a custom
+    #   ZFS-backed volume plugin
+    cache_path_elts=(
+        "$(dirname "${BUILDKITE_BUILD_PATH}")"
+        "cache"
+        "${BUILDKITE_AGENT_NAME}"
+        "${BUILDKITE_ORGANIZATION_SLUG}"
+        "${BUILDKITE_PIPELINE_SLUG}"
+    )
+    cache_path="$(printf "%s/" "${cache_path_elts[@]}")"
+    mkdir -p "$cache_path"
+    declare -rx DOCKER_CACHE_MOUNT="type=bind,src=${cache_path},dst=/cache"
+
+    # FIXME: can we ensure somehow that all variables in secrets_file are
+    # prefixed by `SECRET_`?
+    declare -r secrets_file="/etc/buildkite-agent/secrets"
+    if test -r "$secrets_file" -a -f "$secrets_file"
+    then
+        set -a
+        # shellcheck source=/dev/null
+        . "$secrets_file"
+        set +a
+    fi
+
+    unset -v cache_path_elts cache_path secrets_file
+else
+    declare -rx DOCKER_RUNTIME=kata-containers
+    # FIXME:
+    #
+    # * create volume from known-good upstream cache (i.e. `master`)
+    # * enforce quota
+    #
+    # Both will require a custom volume plugin (ZFS, perhaps?)
+    declare -rx DOCKER_CACHE_MOUNT="type=volume,dst=/cache"
+fi
+
+if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/* ]]
+then
+    echo "Docker image ${DOCKER_IMAGE} not allowed"
+    exit 1
+fi
+

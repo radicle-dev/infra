@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -eou pipefail
+IFS=$'\n\t'
+
+if [[ "$BUILDKITE_COMMAND" == "buildkite-agent pipeline upload"* ]]
+then
+    # strip known command prefix
+    args="${BUILDKITE_COMMAND#buildkite-agent pipeline upload}"
+    # collect additional positional arguments
+    # shellcheck disable=SC2206
+    args=(${args# *})
+    if [[ ${#args[@]} -gt 0 ]]
+    then
+        # take first argument and ensure it's a path relative to PWD
+        arg="$(realpath --relative-base="$PWD" "${args[0]}")"
+        arg="$(realpath --relative-base="$PWD" "$PWD/$arg")"
+    else
+        # otherwise, use agent defaults
+        arg=""
+    fi
+    eval "buildkite-agent pipeline upload $arg"
+    exit $?
+fi
+
+# Make sure the container gets killed - sending SIGKILL to the `docker` process
+# (probably) causes `dockerd` to miss the signal.
+function fin {
+    local errno=$?
+    docker kill "build-${BUILDKITE_BUILD_ID}" || true
+    docker rm   "build-${BUILDKITE_BUILD_ID}" || true
+    exit $errno
+}
+trap fin ERR
+
+# Pass environment.
+
+# Subset of the environment populated by buildkite.
+#
+# This avoids multi-line variables, and is driven mainly by the needs of
+# codecov.io. More can be added on demand.
+build_env=(
+    "--env=CI"
+    "--env=BUILDKITE"
+    "--env=BUILDKITE_BRANCH"
+    "--env=BUILDKITE_BUILD_NUMBER"
+    "--env=BUILDKITE_JOB_ID"
+    "--env=BUILDKITE_BUILD_URL"
+    "--env=BUILDKITE_PROJECT_SLUG"
+    "--env=BUILDKITE_COMMIT"
+)
+
+# Pipeline variables
+#
+# Using the `env` attribute in a pipeline yaml requires prefixing the variable
+# names with `BUILD_`. The prefix will be removed.
+for var in "${!BUILD_@}"
+do
+    echo "Exporting pipeline env variable '${var}' as '${var#BUILD_}'"
+    build_env+=( "--env=${var#BUILD_}=${!var}" )
+done
+
+# Secret variables (as per environment hook)
+for var in "${!SECRET_@}"
+do
+    echo "Exporting secret variable '${var}' as '${var#SECRET_}'"
+    build_env+=( "--env=${var#SECRET_}=${!var}" )
+done
+
+declare -r BUILDKITE_BUILD_ENV="$(printf "%s " "${build_env[@]}")"
+
+# BUILDKITE_BUILD_ENV *MUST NOT* be quoted to be passed correctly as additional
+# arguments:
+# shellcheck disable=SC2086
+timeout \
+    --kill-after=1h \
+    --signal=TERM \
+    50m \
+    docker run --tty --rm \
+        --name="build-${BUILDKITE_BUILD_ID}" \
+        --read-only \
+        --user="$(id -u):$(id -g)" \
+        --cap-drop=ALL \
+        --security-opt=no-new-privileges \
+        --runtime="${DOCKER_RUNTIME:-runc}" \
+        --mount="${DOCKER_CACHE_MOUNT}" \
+        --volume="${BUILDKITE_BUILD_CHECKOUT_PATH}:/build" \
+        --workdir=/build \
+        ${BUILDKITE_BUILD_ENV} \
+        "${DOCKER_IMAGE}"  \
+        /bin/sh -c "${BUILDKITE_COMMAND}"
