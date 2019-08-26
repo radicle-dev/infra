@@ -195,16 +195,6 @@ impl Display for ErrorResponse {
     }
 }
 
-impl std::error::Error for &ErrorResponse {
-    fn description(&self) -> &str {
-        "Error Response"
-    }
-
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        None
-    }
-}
-
 impl std::error::Error for ErrorResponse {
     fn description(&self) -> &str {
         "Error Response"
