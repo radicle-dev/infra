@@ -1,6 +1,7 @@
-use listenfd::ListenFd;
 use std::marker::Sync;
 use std::path::Path;
+
+use listenfd::ListenFd;
 use tokio::net::UnixListener;
 use tokio::reactor::Handle;
 use warp::Filter;

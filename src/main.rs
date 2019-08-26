@@ -1,9 +1,10 @@
 extern crate clap;
 extern crate pretty_env_logger;
 
+use std::path::PathBuf;
+
 use clap::{App, Arg};
 
-use std::path::PathBuf;
 use zockervols::server::run_server;
 use zockervols::zfs::Zfs;
 
