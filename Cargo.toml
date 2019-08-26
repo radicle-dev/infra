@@ -1,8 +1,10 @@
 [package]
 name = "zockervols"
+description = "ZFS-backed Docker Volumes"
 version = "0.1.0"
-authors = ["Kim Altintop <kim.altintop@gmail.com>"]
+authors = ["Kim Altintop <kim@monadic.xyz>"]
 edition = "2018"
+readme = "README.md"
 
 [dependencies]
 byte-unit = "3.0"
