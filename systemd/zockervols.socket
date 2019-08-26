@@ -1,0 +1,8 @@
+[Unit]
+Description=Zockervols: Docker volumes on ZFS
+
+[Socket]
+ListenStream=/run/docker/plugins/zockervols.sock
+
+[Install]
+WantedBy=sockets.target
