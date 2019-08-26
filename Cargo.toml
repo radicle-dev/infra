@@ -5,6 +5,7 @@ version = "0.1.0"
 authors = ["Kim Altintop <kim@monadic.xyz>"]
 edition = "2018"
 readme = "README.md"
+license = "MIT"
 
 [dependencies]
 byte-unit = "3.0"
@@ -19,3 +20,11 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = "0.1"
 warp = "0.1"
+
+[package.metadata.deb]
+maintainer = "Kim Altintop <kim@monadic.xyz>"
+copyright = "2019 Kim Altintop, Monadic GmbH"
+depends = "$auto, systemd, docker.io, zfsutils"
+assets = [
+    ["target/release/zockervols", "usr/bin", "755"]
+]
