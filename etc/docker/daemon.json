@@ -2,7 +2,7 @@
     "storage-driver": "zfs",
     "storage-opts": [
         "size=2.5GB",
-        "zfs.name=${__DOCKER_ZFS_DATASET}"
+        "zfs.fsname=${__DOCKER_ZFS_DATASET}"
     ],
     "runtimes": {
         "kata-runtime": {
