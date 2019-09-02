@@ -2,19 +2,28 @@
 set -eou pipefail
 IFS=$'\n\t'
 
-declare -r master_cache_volume="cache_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}_${BUILDKITE_BRANCH}"
+declare -r cache_volume_prefix="cache_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
+declare -r master_cache_volume="${cache_volume_prefix}_${BUILDKITE_PIPELINE_DEFAULT_BRANCH}"
 # Create volume for master branch, if not exists
-docker volume create -d zockervols "$master_cache_volume"
+docker volume create --driver=zockervols "$master_cache_volume"
 
 if [[ "${BUILDKITE_REPO}" =~ (https|git)://github.com/oscoin/* ]]
 then
     declare -rx DOCKER_RUNTIME=runc
 
-    if [[ "${BUILDKITE_BRANCH}" == "master" ]]
+    if [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
     then
+        # Use and mutate the master cache
         declare -rx DOCKER_CACHE_MOUNT="type=volume,src=${master_cache_volume},dst=/cache,volume-driver=zockervols"
     else
-        declare -rx DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume}"
+        # Create a branch cache from master, labelled for later pruning
+        declare -r branch_cache_volume="${cache_volume_prefix}_${BUILDKITE_BRANCH}"
+        docker volume create \
+            --driver=zockervols \
+            --label=build_cache \
+            --opt="from=${master_cache_volume}" \
+            "$branch_cache_volume"
+        declare -rx DOCKER_CACHE_MOUNT="type=volume,src=${branch_cache_volume},dst=/cache,volume-driver=zockervols"
     fi
 
     # FIXME: can we ensure somehow that all variables in secrets_file are
@@ -28,7 +37,10 @@ then
         set +a
     fi
 else
+    # Use kata-containers for isolation
     declare -rx DOCKER_RUNTIME=kata-containers
+    # Create an anonymous branch cache from master, which gets discarded at the
+    # end of the build
     declare -rx DOCKER_CACHE_MOUNT="type=volume,src=${master_cache_volume},dst=/cache,volume-driver=zockervols"
 fi
 
