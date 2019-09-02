@@ -101,7 +101,7 @@ impl From<Error> for ErrorResponse {
             Error::CmdOutputParseError(e) => e.to_string(),
             Error::VolumeOptionsError(e) => e.to_string(),
         };
-        ErrorResponse { err: err }
+        ErrorResponse { err }
     }
 }
 
@@ -173,7 +173,10 @@ impl TryFrom<HashMap<String, String>> for VolumeOptions {
 
     fn try_from(opts: HashMap<String, String>) -> Result<Self, Self::Error> {
         let mut def = VolumeOptions::default();
-        def.snapshot_of = opts.get("snapshot-of").map(|x| x.clone());
+        def.snapshot_of = opts
+            .get("snapshot-of")
+            .or_else(|| opts.get("from"))
+            .cloned();
         def.quota = opts
             .get("quota")
             .and_then(|s| {
@@ -199,12 +202,12 @@ pub struct Zfs {
 impl Zfs {
     pub fn new(root: PathBuf) -> Self {
         Self {
-            root: root,
+            root,
             mounts: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
-    fn exists(&self, name: &String) -> Result<bool, Error> {
+    fn exists(&self, name: &str) -> Result<bool, Error> {
         self.get_mountpoint(name)
             .and(Ok(true))
             .or_else(|e| match e {
@@ -216,7 +219,7 @@ impl Zfs {
             })
     }
 
-    fn do_create(&self, name: &String, opts: HashMap<String, String>) -> Result<(), Error> {
+    fn do_create(&self, name: &str, opts: HashMap<String, String>) -> Result<(), Error> {
         let vopts = VolumeOptions::try_from(opts)?;
 
         match vopts.snapshot_of {
@@ -234,20 +237,20 @@ impl Zfs {
         }
     }
 
-    fn do_remove(&self, name: String) -> Result<(), Error> {
+    fn do_remove(&self, name: &str) -> Result<(), Error> {
         match self.mounts.try_lock() {
-            Ok(ref mut mutex) => match mutex.get(&name) {
+            Ok(ref mut mutex) => match mutex.get(name) {
                 None => Cmd::Destroy.run(&[self.root.join(name)]).map(|_| ()),
                 Some(by) => Err(Error::VolInUseError(
-                    name,
-                    by.iter().map(|s| s.clone()).collect(),
+                    name.to_string(),
+                    by.iter().cloned().collect(),
                 )),
             },
-            Err(e) => Err(Error::MountsLockError(name, e.to_string())),
+            Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
         }
     }
 
-    fn do_mount(self, name: &String, caller: String) -> Result<PathBuf, Error> {
+    fn do_mount(&self, name: &str, caller: &str) -> Result<PathBuf, Error> {
         match self.mounts.try_lock() {
             Ok(ref mut mutex) => {
                 let mountpoint = if !mutex.contains_key(name) {
@@ -260,8 +263,8 @@ impl Zfs {
 
                 mutex
                     .entry(name.to_string())
-                    .or_insert(HashSet::new())
-                    .insert(caller);
+                    .or_insert_with(HashSet::new)
+                    .insert(caller.to_string());
 
                 mountpoint
             }
@@ -269,26 +272,26 @@ impl Zfs {
         }
     }
 
-    fn do_unmount(self, name: String, caller: &String) -> Result<(), Error> {
+    fn do_unmount(&self, name: &str, caller: &str) -> Result<(), Error> {
         match self.mounts.try_lock() {
             Ok(ref mut mutex) => {
                 mutex
-                    .get_mut(&name)
+                    .get_mut(name)
                     .and_then(|owners| Some(owners.remove(caller)));
 
-                match mutex.get(&name) {
+                match mutex.get(name) {
                     Some(by) => Err(Error::VolInUseError(
-                        name,
-                        by.iter().map(|s| s.clone()).collect(),
+                        name.to_string(),
+                        by.iter().cloned().collect(),
                     )),
                     None => Cmd::Unmount.run(&[name]).map(|_| ()),
                 }
             }
-            Err(e) => Err(Error::MountsLockError(name, e.to_string())),
+            Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
         }
     }
 
-    fn get_mountpoint(&self, name: &String) -> Result<PathBuf, Error> {
+    fn get_mountpoint(&self, name: &str) -> Result<PathBuf, Error> {
         let out = Cmd::List.run(&[
             "-H",
             "-o",
@@ -299,7 +302,7 @@ impl Zfs {
         Ok(PathBuf::from(stdout.lines().nth(0).expect("Empty result")))
     }
 
-    fn inspect(&self, name: &String) -> Result<Dataset, Error> {
+    fn inspect(&self, name: &str) -> Result<Dataset, Error> {
         let out = Cmd::List.run(&[
             "-H",
             "-p",
@@ -392,22 +395,22 @@ impl From<Dataset> for Volume {
 impl VolumePlugin for Zfs {
     fn create(&self, rq: CreateRequest) -> Result<(), ErrorResponse> {
         info!("Volume.Create: {:?}", rq);
-        match self.exists(&rq.name)? {
-            true => Ok(()),
-            false => self
-                .do_create(&rq.name, rq.options.unwrap_or(HashMap::new()))
-                .map_err(|e| e.into()),
+        if self.exists(&rq.name)? {
+            Ok(())
+        } else {
+            self.do_create(&rq.name, rq.options.unwrap_or_default())
+                .map_err(|e| e.into())
         }
     }
 
     fn remove(&self, rq: RemoveRequest) -> Result<(), ErrorResponse> {
         info!("Volume.Remove: {:?}", rq);
-        self.do_remove(rq.name).map_err(|e| e.into())
+        self.do_remove(&rq.name).map_err(|e| e.into())
     }
 
-    fn mount(self, rq: MountRequest) -> Result<MountResponse, ErrorResponse> {
+    fn mount(&self, rq: MountRequest) -> Result<MountResponse, ErrorResponse> {
         info!("Volume.Mount: {:?}", rq);
-        self.do_mount(&rq.name, rq.id)
+        self.do_mount(&rq.name, &rq.id)
             .map_err(|e| e.into())
             .map(|mountpoint| MountResponse {
                 mountpoint: mountpoint.to_str().map(String::from).unwrap(),
@@ -423,9 +426,9 @@ impl VolumePlugin for Zfs {
             })
     }
 
-    fn unmount(self, rq: UnmountRequest) -> Result<(), ErrorResponse> {
+    fn unmount(&self, rq: UnmountRequest) -> Result<(), ErrorResponse> {
         info!("Volume.Unmount: {:?}", rq);
-        self.do_unmount(rq.name, &rq.id).map_err(|e| e.into())
+        self.do_unmount(&rq.name, &rq.id).map_err(|e| e.into())
     }
 
     fn get(&self, rq: GetRequest) -> Result<GetResponse, ErrorResponse> {
@@ -435,7 +438,7 @@ impl VolumePlugin for Zfs {
             .map(|ds| GetResponse { volume: ds.into() })
     }
 
-    fn list(self) -> Result<ListResponse, ErrorResponse> {
+    fn list(&self) -> Result<ListResponse, ErrorResponse> {
         info!("Volume.List");
         self.inspect_all()
             .map_err(|e| e.into())
@@ -444,7 +447,7 @@ impl VolumePlugin for Zfs {
             })
     }
 
-    fn capabilities(self) -> CapabilitiesResponse {
+    fn capabilities(&self) -> CapabilitiesResponse {
         info!("Volume.Capabilities");
         CapabilitiesResponse {
             capabilities: Capabilities {

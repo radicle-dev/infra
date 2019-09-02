@@ -120,9 +120,12 @@ where
                 .incoming(),
         )
     } else {
+        let err = format!(
+            "Can't bind to UNIX socket at {}",
+            socket.to_string().as_str()
+        );
         // FIXME: set permissions to 700
-        let listener = UnixListener::bind(&socket)
-            .expect(format!("Can't bind to UNIX socket at {}", socket.to_string()).as_str());
+        let listener = UnixListener::bind(&socket).expect(&err);
         server.run_incoming(listener.incoming())
     }
 }

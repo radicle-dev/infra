@@ -46,12 +46,12 @@ impl<T: VolumePlugin> DockerPlugin for T {
 pub trait VolumePlugin: DockerPlugin {
     fn create(&self, rq: CreateRequest) -> Result<(), ErrorResponse>;
     fn remove(&self, rq: RemoveRequest) -> Result<(), ErrorResponse>;
-    fn mount(self, rq: MountRequest) -> Result<MountResponse, ErrorResponse>;
+    fn mount(&self, rq: MountRequest) -> Result<MountResponse, ErrorResponse>;
     fn path(&self, rq: PathRequest) -> Result<PathResponse, ErrorResponse>;
-    fn unmount(self, rq: UnmountRequest) -> Result<(), ErrorResponse>;
+    fn unmount(&self, rq: UnmountRequest) -> Result<(), ErrorResponse>;
     fn get(&self, rq: GetRequest) -> Result<GetResponse, ErrorResponse>;
-    fn list(self) -> Result<ListResponse, ErrorResponse>;
-    fn capabilities(self) -> CapabilitiesResponse;
+    fn list(&self) -> Result<ListResponse, ErrorResponse>;
+    fn capabilities(&self) -> CapabilitiesResponse;
 }
 
 // CreateRequest is the pub structure that docker's requests are deserialized to.
@@ -170,7 +170,7 @@ pub struct ErrorResponse {
 
 impl From<String> for ErrorResponse {
     fn from(err: String) -> Self {
-        Self { err: err }
+        Self { err }
     }
 }
 

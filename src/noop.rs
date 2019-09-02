@@ -12,7 +12,7 @@ impl VolumePlugin for Noop {
         Err("Remove not implemented".into())
     }
 
-    fn mount(self, _: MountRequest) -> Result<MountResponse, ErrorResponse> {
+    fn mount(&self, _: MountRequest) -> Result<MountResponse, ErrorResponse> {
         Ok(MountResponse {
             mountpoint: "/dev/null".to_string(),
         })
@@ -24,7 +24,7 @@ impl VolumePlugin for Noop {
         })
     }
 
-    fn unmount(self, _: UnmountRequest) -> Result<(), ErrorResponse> {
+    fn unmount(&self, _: UnmountRequest) -> Result<(), ErrorResponse> {
         Err("unmount not implemented".into())
     }
 
@@ -39,11 +39,11 @@ impl VolumePlugin for Noop {
         })
     }
 
-    fn list(self) -> Result<ListResponse, ErrorResponse> {
+    fn list(&self) -> Result<ListResponse, ErrorResponse> {
         Ok(ListResponse { volumes: vec![] })
     }
 
-    fn capabilities(self) -> CapabilitiesResponse {
+    fn capabilities(&self) -> CapabilitiesResponse {
         CapabilitiesResponse {
             capabilities: Capabilities {
                 scope: Scope::Local,
