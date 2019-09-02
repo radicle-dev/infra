@@ -24,7 +24,9 @@ warp = "0.1"
 [package.metadata.deb]
 maintainer = "Kim Altintop <kim@monadic.xyz>"
 copyright = "2019 Kim Altintop, Monadic GmbH"
-depends = "$auto, systemd, docker.io, zfsutils"
+depends = "$auto, systemd, docker.io, zfsutils-linux"
 assets = [
-    ["target/release/zockervols", "usr/bin", "755"]
+    ["target/release/zockervols", "usr/bin/", "755"],
+    ["systemd/zockervols.service", "lib/systemd/system/", "644"],
+    ["systemd/zockervols.socket", "lib/systemd/system/", "644"]
 ]
