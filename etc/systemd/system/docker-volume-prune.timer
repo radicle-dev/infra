@@ -1,0 +1,9 @@
+[Unit]
+Description=Prune build cache docker volumes periodically
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
