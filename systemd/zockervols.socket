@@ -5,4 +5,4 @@ Description=Zockervols: Docker volumes on ZFS
 ListenStream=/run/docker/plugins/zockervols.sock
 
 [Install]
-WantedBy=sockets.target
+WantedBy=sockets.target docker.service

@@ -25,6 +25,8 @@ warp = "0.1"
 maintainer = "Kim Altintop <kim@monadic.xyz>"
 copyright = "2019 Kim Altintop, Monadic GmbH"
 depends = "$auto, systemd, docker.io, zfsutils-linux"
+priority = "optional"
+maintainer-scripts = ".debian"
 assets = [
     ["target/release/zockervols", "usr/bin/", "755"],
     ["systemd/zockervols.service", "lib/systemd/system/", "644"],
