@@ -24,7 +24,7 @@ warp = "0.1"
 [package.metadata.deb]
 maintainer = "Kim Altintop <kim@monadic.xyz>"
 copyright = "2019 Kim Altintop, Monadic GmbH"
-depends = "$auto, systemd, docker.io, zfsutils-linux"
+depends = "$auto, systemd, docker-ce, zfsutils-linux"
 priority = "optional"
 maintainer-scripts = ".debian"
 assets = [
