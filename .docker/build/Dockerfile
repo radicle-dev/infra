@@ -6,6 +6,7 @@ RUN apt-get update \
         libssl-dev \
         pkg-config \
         jq \
+        curl \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 

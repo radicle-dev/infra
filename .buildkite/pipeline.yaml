@@ -2,11 +2,11 @@ steps:
 - label: "Tests"
   command: "cargo test --all"
   env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:37da18df045ce1099f3fc19dd2bb62407fce1904e19f8e1a059fcefe5c920321"
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4bcb57139220585f9919ccab256b3aa80a90a93429e625fddcdcb2e4c6dddb69"
 
-- label: ".deb"
-  command: 'cargo deb --deb-version="$(cargo read-manifest|jq -r .version)+${BUILDKITE_BUILD_NUMBER}"'
+- label: "Package"
+  command: ".buildkite/package.sh"
   env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:37da18df045ce1099f3fc19dd2bb62407fce1904e19f8e1a059fcefe5c920321"
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4bcb57139220585f9919ccab256b3aa80a90a93429e625fddcdcb2e4c6dddb69"
   artifact_paths:
   - "target/debian/*.deb"
