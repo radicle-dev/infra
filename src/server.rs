@@ -2,6 +2,7 @@ use std::marker::Sync;
 use std::path::Path;
 
 use listenfd::ListenFd;
+use serde::de::DeserializeOwned;
 use tokio::net::UnixListener;
 use tokio::reactor::Handle;
 use warp::Filter;
@@ -20,8 +21,7 @@ where
         .map(|h: H| warp::reply::json(&h.activate()));
 
     let create = warp::path(CREATE)
-        .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::body::json())
+        .and(json_request())
         .and(handler.clone())
         .and_then(|rq: CreateRequest, h: H| {
             h.create(rq)
@@ -31,8 +31,7 @@ where
         .recover(error_response);
 
     let get = warp::path(GET)
-        .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::body::json())
+        .and(json_request())
         .and(handler.clone())
         .and_then(|rq: GetRequest, h: H| {
             h.get(rq)
@@ -51,8 +50,7 @@ where
         .recover(error_response);
 
     let remove = warp::path(REMOVE)
-        .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::body::json())
+        .and(json_request())
         .and(handler.clone())
         .and_then(|rq: RemoveRequest, h: H| {
             h.remove(rq)
@@ -62,8 +60,7 @@ where
         .recover(error_response);
 
     let path = warp::path(PATH)
-        .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::body::json())
+        .and(json_request())
         .and(handler.clone())
         .and_then(|rq: PathRequest, h: H| {
             h.path(rq)
@@ -73,8 +70,7 @@ where
         .recover(error_response);
 
     let mount = warp::path(MOUNT)
-        .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::body::json())
+        .and(json_request())
         .and(handler.clone())
         .and_then(|rq: MountRequest, h: H| {
             h.mount(rq)
@@ -84,8 +80,7 @@ where
         .recover(error_response);
 
     let unmount = warp::path(UNMOUNT)
-        .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::body::json())
+        .and(json_request())
         .and(handler.clone())
         .and_then(|rq: UnmountRequest, h: H| {
             h.unmount(rq)
@@ -128,6 +123,11 @@ where
         let listener = UnixListener::bind(&socket).expect(&err);
         server.run_incoming(listener.incoming())
     }
+}
+
+fn json_request<T: DeserializeOwned + Send>(
+) -> impl Filter<Extract = (T,), Error = warp::Rejection> + Copy {
+    warp::body::content_length_limit(1024 * 16).and(warp::body::json())
 }
 
 fn error_response(rej: warp::Rejection) -> Result<impl warp::Reply, warp::Rejection> {
