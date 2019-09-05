@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+sudo chown -R buildkite-agent "${BUILDKITE_BUILD_CHECKOUT_PATH}"

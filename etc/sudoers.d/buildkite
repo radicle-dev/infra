@@ -1,0 +1,16 @@
+#
+# Allow the agent user to hand over ownership of checkouts to the builder user
+#
+Cmnd_Alias BK_AGENT = \
+    /bin/chown -R buildkite-builder /mnt/builds/*, \
+    /bin/chown -R buildkite-agent /mnt/builds/*
+
+#
+# Allow the builder user to mount/unmount zockervols
+#
+Cmnd_Alias BK_BUILDER = \
+    /sbin/zfs set mountpoint=none tank/zocker/*, \
+    /sbin/zfs set mountpoint=/mnt/zocker/* tank/zocker/*
+
+buildkite-agent   ALL = NOPASSWD: BK_AGENT
+buildkite-builder ALL = NOPASSWD: BK_BUILDER

@@ -1,8 +1,7 @@
 {
     "storage-driver": "zfs",
     "storage-opts": [
-        "size=2.5GB",
-        "zfs.fsname=${__DOCKER_ZFS_DATASET}"
+        "zfs.fsname=tank/docker"
     ],
     "runtimes": {
         "kata-runtime": {

@@ -22,16 +22,6 @@ then
     exit $?
 fi
 
-# Make sure the container gets killed - sending SIGKILL to the `docker` process
-# (probably) causes `dockerd` to miss the signal.
-function fin {
-    local errno=$?
-    docker kill "build-${BUILDKITE_BUILD_ID}" || true
-    docker rm   "build-${BUILDKITE_BUILD_ID}" || true
-    exit $errno
-}
-trap fin ERR
-
 # Pass environment.
 
 # Subset of the environment populated by buildkite.
@@ -66,11 +56,21 @@ do
     build_env+=( "--env=${var#SECRET_}=${!var}" )
 done
 
-declare -r BUILDKITE_BUILD_ENV="$(printf "%s " "${build_env[@]}")"
+volumes=(
+    "--mount=type=tmpfs,dst=/tmp,tmpfs-size=20000000"
+    "--mount=${DOCKER_CACHE_MOUNT}"
+    "--mount=type=bind,src=${BUILDKITE_BUILD_CHECKOUT_PATH},dst=/build"
+)
+if [[ -n "$SECRET_GOOGLE_APPLICATION_CREDENTIALS" ]]
+then
+    volumes+=(
+        "--mount=type=bind,src=${SECRET_GOOGLE_APPLICATION_CREDENTIALS},dst=${SECRET_GOOGLE_APPLICATION_CREDENTIALS},readonly"
+    )
+fi
 
-# BUILDKITE_BUILD_ENV *MUST NOT* be quoted to be passed correctly as additional
-# arguments:
-# shellcheck disable=SC2086
+uid="$(id -u buildkite-builder)"
+gid="$(id -g buildkite-builder)"
+
 timeout \
     --kill-after=1h \
     --signal=TERM \
@@ -78,13 +78,12 @@ timeout \
     docker run --tty --rm \
         --name="build-${BUILDKITE_BUILD_ID}" \
         --read-only \
-        --user="$(id -u):$(id -g)" \
+        --user="${uid}:${gid}" \
         --cap-drop=ALL \
         --security-opt=no-new-privileges \
         --runtime="${DOCKER_RUNTIME:-runc}" \
-        --mount="${DOCKER_CACHE_MOUNT}" \
-        --volume="${BUILDKITE_BUILD_CHECKOUT_PATH}:/build" \
+        "${volumes[@]}" \
         --workdir=/build \
-        ${BUILDKITE_BUILD_ENV} \
+        "${build_env[@]}" \
         "${DOCKER_IMAGE}"  \
         /bin/sh -c "${BUILDKITE_COMMAND}"

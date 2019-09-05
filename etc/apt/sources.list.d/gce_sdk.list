@@ -1,0 +1,2 @@
+deb http://packages.cloud.google.com/apt cloud-sdk-buster main
+deb http://packages.cloud.google.com/apt google-cloud-packages-archive-keyring-buster main

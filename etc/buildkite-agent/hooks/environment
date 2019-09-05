@@ -4,17 +4,21 @@ IFS=$'\n\t'
 
 declare -r cache_volume_prefix="cache_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
 declare -r master_cache_volume="${cache_volume_prefix}_${BUILDKITE_PIPELINE_DEFAULT_BRANCH}"
+
 # Create volume for master branch, if not exists
-docker volume create --driver=zockervols "$master_cache_volume"
+docker volume create \
+    --driver=zockervols \
+    --opt="quota=1GiB" \
+    "$master_cache_volume"
 
 if [[ "${BUILDKITE_REPO}" =~ (https|git)://github.com/oscoin/* ]]
 then
-    declare -rx DOCKER_RUNTIME=runc
+    export DOCKER_RUNTIME=runc
 
     if [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
     then
         # Use and mutate the master cache
-        declare -rx DOCKER_CACHE_MOUNT="type=volume,src=${master_cache_volume},dst=/cache,volume-driver=zockervols"
+        export DOCKER_CACHE_MOUNT="type=volume,src=${master_cache_volume},dst=/cache,volume-driver=zockervols"
     else
         # Create a branch cache from master, labelled for later pruning
         declare -r branch_cache_volume="${cache_volume_prefix}_${BUILDKITE_BRANCH}"
@@ -22,8 +26,9 @@ then
             --driver=zockervols \
             --label=build_cache \
             --opt="from=${master_cache_volume}" \
+            --opt="quota=1GiB" \
             "$branch_cache_volume"
-        declare -rx DOCKER_CACHE_MOUNT="type=volume,src=${branch_cache_volume},dst=/cache,volume-driver=zockervols"
+        export DOCKER_CACHE_MOUNT="type=volume,src=${branch_cache_volume},dst=/cache,volume-driver=zockervols"
     fi
 
     # FIXME: can we ensure somehow that all variables in secrets_file are
@@ -36,12 +41,14 @@ then
         . "$secrets_file"
         set +a
     fi
+
+    export SECRET_GOOGLE_APPLICATION_CREDENTIALS=/etc/gce/cred.json
 else
     # Use kata-containers for isolation
-    declare -rx DOCKER_RUNTIME=kata-containers
+    export DOCKER_RUNTIME=kata-containers
     # Create an anonymous branch cache from master, which gets discarded at the
     # end of the build
-    declare -rx DOCKER_CACHE_MOUNT="type=volume,src=${master_cache_volume},dst=/cache,volume-driver=zockervols"
+    export DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume},volume-opt=quota=1GiB"
 fi
 
 if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/* ]]
