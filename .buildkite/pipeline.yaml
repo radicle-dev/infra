@@ -3,6 +3,8 @@ steps:
   command: "cargo test --all"
   env:
     DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4bcb57139220585f9919ccab256b3aa80a90a93429e625fddcdcb2e4c6dddb69"
+  agents:
+    docker: "true"
 
 - label: "Package"
   command: ".buildkite/package.sh"
@@ -10,3 +12,5 @@ steps:
     DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4bcb57139220585f9919ccab256b3aa80a90a93429e625fddcdcb2e4c6dddb69"
   artifact_paths:
   - "target/debian/*.deb"
+  agents:
+    docker: "true"

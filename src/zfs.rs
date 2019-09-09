@@ -177,14 +177,14 @@ impl TryFrom<HashMap<String, String>> for VolumeOptions {
     fn try_from(opts: HashMap<String, String>) -> Result<Self, Self::Error> {
         let def = VolumeOptions::default();
 
-        let quota = opts
-            .get("quota")
-            .and_then(|s| {
-                Byte::from_str(s)
-                    .ok()
-                    .and_then(|b| u64::try_from(b.get_bytes()).ok())
-            })
-            .ok_or(OptsError("Invalid quota specifier"))?;
+        let quota = match opts.get("quota") {
+            Some(x) => Byte::from_str(x)
+                .map_err(|_| OptsError("Invalid quota specified"))
+                .and_then(|byte| {
+                    u64::try_from(byte.get_bytes()).map_err(|_| OptsError("Quota out of range"))
+                }),
+            None => Ok(def.quota),
+        }?;
 
         fn option_enabled(opts: &HashMap<String, String>, opt: &str, def: bool) -> bool {
             opts.get(opt).map(|x| x == "on").unwrap_or(def)
