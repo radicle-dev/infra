@@ -111,6 +111,7 @@ pub struct VolumeOptions {
     enable_compression: bool,
     enable_atime: bool,
     enable_exec: bool,
+    enable_setuid: bool,
 }
 
 impl Default for VolumeOptions {
@@ -121,6 +122,7 @@ impl Default for VolumeOptions {
             enable_compression: true,
             enable_atime: false,
             enable_exec: false,
+            enable_setuid: false,
         }
     }
 }
@@ -136,6 +138,7 @@ impl VolumeOptions {
         props.insert("compression", onoff(self.enable_compression));
         props.insert("atime", onoff(self.enable_atime));
         props.insert("exec", onoff(self.enable_exec));
+        props.insert("setuid", onoff(self.enable_setuid));
 
         props
     }
@@ -172,24 +175,32 @@ impl TryFrom<HashMap<String, String>> for VolumeOptions {
     type Error = OptsError;
 
     fn try_from(opts: HashMap<String, String>) -> Result<Self, Self::Error> {
-        let mut def = VolumeOptions::default();
-        def.snapshot_of = opts
-            .get("snapshot-of")
-            .or_else(|| opts.get("from"))
-            .cloned();
-        def.quota = opts
+        let def = VolumeOptions::default();
+
+        let quota = opts
             .get("quota")
             .and_then(|s| {
                 Byte::from_str(s)
                     .ok()
                     .and_then(|b| u64::try_from(b.get_bytes()).ok())
             })
-            .unwrap_or(def.quota);
-        def.enable_compression = !opts.contains_key("no-compression");
-        def.enable_atime = opts.contains_key("atime");
-        def.enable_exec = opts.contains_key("exec");
+            .ok_or(OptsError("Invalid quota specifier"))?;
 
-        Ok(def)
+        fn option_enabled(opts: &HashMap<String, String>, opt: &str, def: bool) -> bool {
+            opts.get(opt).map(|x| x == "on").unwrap_or(def)
+        }
+
+        Ok(VolumeOptions {
+            snapshot_of: opts
+                .get("snapshot-of")
+                .or_else(|| opts.get("from"))
+                .cloned(),
+            quota,
+            enable_compression: option_enabled(&opts, "compression", def.enable_compression),
+            enable_atime: option_enabled(&opts, "atime", def.enable_atime),
+            enable_exec: option_enabled(&opts, "exec", def.enable_exec),
+            enable_setuid: option_enabled(&opts, "setuid", def.enable_setuid),
+        })
     }
 }
 
