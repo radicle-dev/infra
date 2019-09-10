@@ -276,6 +276,8 @@ impl Zfs {
             }
             None => {
                 let mut create_opts = vopts.as_args();
+                let mut no_mount = vec!["-o".to_string(), "mountpoint=none".to_string()];
+                create_opts.append(&mut no_mount);
                 create_opts.push(self.root.join(name).to_str().unwrap().to_string());
                 Cmd::Create.run(create_opts).map(|_| ())
             }
@@ -299,8 +301,14 @@ impl Zfs {
         match self.mounts.try_lock() {
             Ok(ref mut mutex) => {
                 let mountpoint = if !mutex.contains_key(name) {
+                    let root_mountpoint = self.get_mountpoint(self.root.to_str().unwrap())?;
                     Cmd::Mount
-                        .run(&[self.root.join(name)])
+                        .run(&[
+                            String::from("-o"),
+                            String::from("mountpoint=")
+                                + root_mountpoint.join(name).to_str().unwrap(),
+                            String::from(self.root.join(name).to_str().unwrap()),
+                        ])
                         .map(|_| self.get_mountpoint(&name))?
                 } else {
                     self.get_mountpoint(&name)
