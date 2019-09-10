@@ -167,10 +167,14 @@ impl VolumeOptions {
     }
 
     fn as_args(&self) -> Vec<String> {
-        self.as_properties()
-            .iter()
-            .map(|(k, v)| format!("{}={}", k, v))
-            .intersperse("-o".to_string())
+        vec!["-o".to_string()]
+            .into_iter()
+            .chain(
+                self.as_properties()
+                    .iter()
+                    .map(|(k, v)| format!("{}={}", k, v))
+                    .intersperse("-o".to_string()),
+            )
             .collect()
     }
 }
