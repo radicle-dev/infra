@@ -33,15 +33,37 @@ impl Cmd {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        let out = Command::new("zfs")
-            .arg(self.to_string())
-            .args(args)
-            .output()?;
+        let out = if self.sudo() {
+            Command::new("sudo")
+                .arg("zfs")
+                .arg(self.to_string())
+                .args(args)
+                .output()?
+        } else {
+            Command::new("zfs")
+                .arg(self.to_string())
+                .args(args)
+                .output()?
+        };
         if out.status.success() {
             Ok(out.stdout)
         } else {
             Err(Error::CmdError(self, out.stderr))
         }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn sudo(&self) -> bool {
+        match self {
+            Cmd::Mount => true,
+            Cmd::Unmount => true,
+            _ => false,
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn sudo(&self) -> bool {
+        false
     }
 }
 
