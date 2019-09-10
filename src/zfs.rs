@@ -166,16 +166,12 @@ impl VolumeOptions {
         props
     }
 
-    fn as_args(&self, pre: Vec<String>) -> Vec<String> {
-        let dasho = vec!["-o".to_string()];
-        let props: Vec<String> = self
-            .as_properties()
+    fn as_args(&self) -> Vec<String> {
+        self.as_properties()
             .iter()
             .map(|(k, v)| format!("{}={}", k, v))
             .intersperse("-o".to_string())
-            .collect();
-
-        pre.into_iter().chain(dasho).chain(props).collect()
+            .collect()
     }
 }
 
@@ -259,15 +255,21 @@ impl Zfs {
         match vopts.snapshot_of {
             Some(ref vol) => {
                 let snap = self.root.join(vol).to_str().unwrap().to_owned() + "@" + name;
+                let mut clone_opts = vopts.as_args();
+                clone_opts.push(snap.to_owned());
+
+                // create snapshot from `vol`
                 Cmd::Snapshot.run(&[&snap]).map(|_| ())?;
-                Cmd::Clone
-                    .run(vopts.as_args(vec![snap.to_owned()]))
-                    .map(|_| ())?;
+                // clone the snapshot
+                Cmd::Clone.run(clone_opts).map(|_| ())?;
+                // promote the snapshot, i.e. break parent-child relationship with `vol`
                 Cmd::Promote.run(&[snap]).map(|_| ())
             }
-            None => Cmd::Create
-                .run(vopts.as_args(vec![self.root.join(name).to_str().unwrap().to_string()]))
-                .map(|_| ()),
+            None => {
+                let mut create_opts = vopts.as_args();
+                create_opts.push(self.root.join(name).to_str().unwrap().to_string());
+                Cmd::Create.run(create_opts).map(|_| ())
+            }
         }
     }
 
