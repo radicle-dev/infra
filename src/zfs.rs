@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::ffi::OsStr;
@@ -33,22 +34,20 @@ impl Cmd {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        let out = if self.sudo() {
-            Command::new("sudo")
-                .arg("zfs")
-                .arg(self.to_string())
-                .args(args)
-                .output()?
-        } else {
-            Command::new("zfs")
-                .arg(self.to_string())
-                .args(args)
-                .output()?
+        let mut cmd = Command::new(if self.sudo() { "sudo" } else { "zfs" });
+        let cmd0 = {
+            let cmd1 = if self.sudo() {
+                cmd.arg("zfs")
+            } else {
+                cmd.borrow_mut()
+            };
+            cmd1.arg(self.to_string()).args(args)
         };
+        let out = cmd0.output()?;
         if out.status.success() {
             Ok(out.stdout)
         } else {
-            Err(Error::CmdError(self, out.stderr))
+            Err(Error::CmdError(format!("{:?}", cmd0), out.stderr))
         }
     }
 
@@ -86,7 +85,7 @@ pub enum Error {
     IoError(io::Error),
     VolInUseError(String, Vec<String>),
     MountsLockError(String, String),
-    CmdError(Cmd, Vec<u8>),
+    CmdError(String, Vec<u8>),
     CmdOutputParseError(csv::Error),
     VolumeOptionsError(OptsError),
 }
@@ -119,7 +118,9 @@ impl From<Error> for ErrorResponse {
                 "Could not acquire lock when trying to check mount status for volume {}: {}",
                 vol, e
             ),
-            Error::CmdError(_, stderr) => String::from_utf8_lossy(&stderr).into_owned(),
+            Error::CmdError(cmd, stderr) => {
+                format!("{}: {}", cmd, String::from_utf8_lossy(&stderr).into_owned())
+            }
             Error::CmdOutputParseError(e) => e.to_string(),
             Error::VolumeOptionsError(e) => e.to_string(),
         };
