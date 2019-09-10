@@ -14,6 +14,7 @@ use chrono::prelude::*;
 use chrono::serde::ts_seconds;
 use itertools::Itertools;
 use serde::Deserialize;
+use users::get_effective_uid;
 
 use crate::api::*;
 
@@ -53,10 +54,14 @@ impl Cmd {
 
     #[cfg(target_os = "linux")]
     fn sudo(&self) -> bool {
-        match self {
-            Cmd::Mount => true,
-            Cmd::Unmount => true,
-            _ => false,
+        if get_effective_uid() == 0 {
+            false
+        } else {
+            match self {
+                Cmd::Mount => true,
+                Cmd::Unmount => true,
+                _ => false,
+            }
         }
     }
 
