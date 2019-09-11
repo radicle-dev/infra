@@ -55,7 +55,7 @@ impl Cmd {
                 }),
             },
 
-            Cmd::Destroy { vol } => self._run(|zfs| zfs.arg("destroy").arg(vol)),
+            Cmd::Destroy { vol } => self._run(|zfs| zfs.arg("destroy").arg(root.join(vol))),
 
             Cmd::Mount { vol } => {
                 let root_mountpoint = self._run(|zfs| {
