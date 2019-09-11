@@ -33,11 +33,18 @@ impl Cmd {
         match self {
             Cmd::Create { vol, opts } => match opts.snapshot_of {
                 Some(ref from) => {
+                    // snapshot the `from` fs
                     let snap = format!("{}@{}", root.join(from).to_str().unwrap(), vol);
-
                     ZfsCmd::User.run(|zfs| zfs.arg("snapshot").arg(&snap))?;
-                    ZfsCmd::User.run(|zfs| zfs.arg("clone").args(opts.as_args()).arg(snap.to_owned()))?;
-                    ZfsCmd::User.run(|zfs| zfs.arg("promote").arg(&snap))
+                    // clone the snapshot as `vol`
+                    ZfsCmd::User.run(|zfs| {
+                        zfs.arg("clone")
+                            .args(opts.as_args())
+                            .arg(snap.to_owned())
+                            .arg(root.join(vol))
+                    })?;
+                    // finally, promote `vol` so `from` can be destroyed
+                    ZfsCmd::User.run(|zfs| zfs.arg("promote").arg(root.join(vol)))
                 }
                 None => ZfsCmd::User.run(|zfs| {
                     zfs.arg("create")
