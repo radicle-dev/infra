@@ -371,8 +371,8 @@ impl Zfs {
 
     fn do_mount(&self, name: &str, caller: &str) -> Result<PathBuf, Error> {
         match self.mounts.try_lock() {
-            Ok(ref mut mutex) => {
-                let mountpoint = if !mutex.contains_key(name) {
+            Ok(ref mut the_mounts) => {
+                let mountpoint = if !the_mounts.contains_key(name) {
                     Cmd::Mount {
                         vol: name.to_string(),
                     }
@@ -382,10 +382,10 @@ impl Zfs {
                     self.get_mountpoint(name)
                 };
 
-                mutex
+                let owners = the_mounts
                     .entry(name.to_string())
-                    .or_insert_with(HashSet::new)
-                    .insert(caller.to_string());
+                    .or_insert_with(HashSet::new);
+                owners.insert(caller.to_string());
 
                 mountpoint
             }
@@ -395,17 +395,18 @@ impl Zfs {
 
     fn do_unmount(&self, name: &str, caller: &str) -> Result<(), Error> {
         match self.mounts.try_lock() {
-            Ok(ref mut mutex) => {
-                mutex
-                    .get_mut(name)
-                    .and_then(|owners| Some(owners.remove(caller)));
+            Ok(ref mut the_mounts) => {
+                if let Some(owners) = the_mounts.get_mut(name) {
+                    owners.remove(caller);
+                }
 
-                match mutex.get(name) {
-                    Some(by) => Err(Error::VolInUseError(
+                match the_mounts.get(name) {
+                    Some(by) if !by.is_empty() => Err(Error::VolInUseError(
                         name.to_string(),
                         by.iter().cloned().collect(),
                     )),
-                    None => Cmd::Unmount {
+
+                    _ => Cmd::Unmount {
                         vol: name.to_string(),
                     }
                     .run(&self.root)
