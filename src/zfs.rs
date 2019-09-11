@@ -73,9 +73,9 @@ impl Cmd {
                 }
             }
 
-            Cmd::Destroy { vol } => ZfsCmd::User.run(|zfs| {
-                zfs.args(&["destroy", "-r"]).arg(root.join(vol))
-            }),
+            Cmd::Destroy { vol } => {
+                ZfsCmd::User.run(|zfs| zfs.args(&["destroy", "-r"]).arg(root.join(vol)))
+            }
 
             Cmd::Mount { vol } => {
                 let root_mountpoint = ZfsCmd::User
@@ -199,14 +199,9 @@ impl From<Error> for ErrorResponse {
     fn from(error: Error) -> Self {
         let err = match error {
             Error::IoError(e) => e.to_string(),
-            Error::VolInUseError(vol, by) => vec![
-                "Volume".to_string(),
-                vol,
-                "is in use by: ".to_string(),
-                by.into_iter().join(","),
-            ]
-            .into_iter()
-            .collect(),
+            Error::VolInUseError(vol, by) => {
+                format!("Volume {} is in use by: {}", vol, by.into_iter().join(", "))
+            }
             Error::MountsLockError(vol, e) => format!(
                 "Could not acquire lock when trying to check mount status for volume {}: {}",
                 vol, e
