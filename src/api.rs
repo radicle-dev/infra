@@ -29,7 +29,7 @@ pub struct ActivateResponse {
 
 #[derive(Serialize, Deserialize)]
 pub enum PluginImplements {
-    #[serde(rename = "lowercase")]
+    #[serde(rename = "authz")]
     Authz,
     NetworkDriver,
     VolumeDriver,
@@ -75,7 +75,7 @@ pub struct RemoveRequest {
 #[serde(rename_all = "PascalCase")]
 pub struct MountRequest {
     pub name: String,
-    #[serde(rename = "UPPERCASE")]
+    #[serde(rename = "ID")]
     pub id: String,
 }
 
@@ -91,7 +91,7 @@ pub struct MountResponse {
 #[serde(rename_all = "PascalCase")]
 pub struct UnmountRequest {
     pub name: String,
-    #[serde(rename = "UPPERCASE")]
+    #[serde(rename = "ID")]
     pub id: String,
 }
 

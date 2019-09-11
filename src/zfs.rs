@@ -1,10 +1,11 @@
 use std::borrow::BorrowMut;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fmt;
 use std::fmt::Display;
 use std::io;
+use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -14,41 +15,80 @@ use chrono::prelude::*;
 use chrono::serde::ts_seconds;
 use itertools::Itertools;
 use serde::Deserialize;
+#[cfg(target_os = "linux")]
 use users::get_effective_uid;
 
 use crate::api::*;
 
-pub enum Cmd {
-    Create,
-    Destroy,
-    Mount,
-    Unmount,
+enum Cmd {
+    Create { vol: String, opts: VolumeOptions },
+    Destroy { vol: String },
+    Mount { vol: String },
+    Unmount { vol: String },
     List,
-    Snapshot,
-    Clone,
-    Promote,
+    GetMountpoint { vol: String },
+    Inspect { vol: String },
 }
 
 impl Cmd {
-    fn run<I, S>(self, args: I) -> Result<Vec<u8>, Error>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        let mut cmd = Command::new(if self.sudo() { "sudo" } else { "zfs" });
-        let cmd0 = {
-            let cmd1 = if self.sudo() {
-                cmd.arg("zfs")
-            } else {
-                cmd.borrow_mut()
-            };
-            cmd1.arg(self.to_string()).args(args)
-        };
-        let out = cmd0.output()?;
-        if out.status.success() {
-            Ok(out.stdout)
-        } else {
-            Err(Error::CmdError(format!("{:?}", cmd0), out.stderr))
+    fn run(&self, root: &PathBuf) -> Result<Vec<u8>, Error> {
+        match self {
+            Cmd::Create { vol, opts } => match opts.snapshot_of {
+                Some(ref from) => {
+                    let snap = format!("{}@{}", root.join(from).to_str().unwrap(), vol);
+
+                    self._run(|zfs| zfs.arg("snapshot").arg(&snap))?;
+                    self._run(|zfs| zfs.arg("clone").args(opts.as_args()).arg(snap.to_owned()))?;
+                    self._run(|zfs| zfs.arg("promote").arg(&snap))
+                }
+                None => self._run(|zfs| {
+                    zfs.arg("create")
+                        .args(opts.as_args())
+                        .args(&["-o", "mountpoint=none"])
+                        .arg(root.join(vol))
+                }).or_else(|e| match e {
+                    Error::CmdError(_, ref stderr) => String::from_utf8_lossy(stderr)
+                        .rfind("filesystem successfully created, but it may only be mounted by root")
+                        .map(|_| Ok(Vec::new()))
+                        .unwrap_or(Err(e)),
+                        _ => Err(e),
+                }),
+            },
+
+            Cmd::Destroy { vol } => self._run(|zfs| zfs.arg("destroy").arg(vol)),
+
+            Cmd::Mount { vol } => {
+                let root_mountpoint = self._run(|zfs| {
+                    zfs.arg("get").args(&["-H", "-o", "value"]).arg(root)
+                }).map(|stdout| PathBuf::from(OsString::from_vec(stdout)))?;
+                let opt = format!("mountpoint={}", root_mountpoint.join(vol).to_str().unwrap());
+                self._run(|zfs| zfs.arg("set").arg(opt).arg(root.join(vol)))
+            }
+
+            Cmd::Unmount { vol } => {
+                self._run(|zfs| zfs.arg("set").arg("mountpoint=none").arg(root.join(vol)))
+            }
+
+            Cmd::List => self._run(|zfs| {
+                zfs.arg("list")
+                    .args(&[
+                    "-H",
+                    "-p",
+                    "-r",
+                    "-o",
+                    "name,mountpoint,creation,used,avail",
+                ])
+                .arg(root)
+            }),
+
+            Cmd::GetMountpoint { vol } => {
+                self._run(|zfs| zfs.arg("get").args(&["-H", "-o", "value"]).arg(root.join(vol)))
+            }
+
+            Cmd::Inspect { vol } => self._run(|zfs| {
+                zfs.arg("list").args(&["-H", "-p", "-o", "name,mountpoint,creation,used,avail"])
+                    .arg(root.join(vol))
+            }),
         }
     }
 
@@ -58,8 +98,8 @@ impl Cmd {
             false
         } else {
             match self {
-                Cmd::Mount => true,
-                Cmd::Unmount => true,
+                Cmd::Mount { .. } => true,
+                Cmd::Unmount { .. } => true,
                 _ => false,
             }
         }
@@ -69,19 +109,26 @@ impl Cmd {
     fn sudo(&self) -> bool {
         false
     }
-}
 
-impl Display for Cmd {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Cmd::Create => write!(f, "create"),
-            Cmd::Destroy => write!(f, "destroy"),
-            Cmd::Mount => write!(f, "mount"),
-            Cmd::Unmount => write!(f, "unmount"),
-            Cmd::List => write!(f, "list"),
-            Cmd::Snapshot => write!(f, "snapshot"),
-            Cmd::Clone => write!(f, "clone"),
-            Cmd::Promote => write!(f, "promote"),
+    fn _run<F>(&self, f: F) -> Result<Vec<u8>, Error>
+    where
+        F: FnOnce(&mut Command) -> &mut Command,
+    {
+        let sudo = self.sudo();
+        let mut base = Command::new(if sudo { "sudo" } else { "zfs" });
+        let cmd = {
+            let cmd = if sudo {
+                base.arg("zfs")
+            } else {
+                base.borrow_mut()
+            };
+            f(cmd)
+        };
+        let out = cmd.output()?;
+        if out.status.success() {
+            Ok(out.stdout)
+        } else {
+            Err(Error::CmdError(format!("{:?}", cmd), out.stderr))
         }
     }
 }
@@ -260,34 +307,23 @@ impl Zfs {
 
     fn do_create(&self, name: &str, opts: HashMap<String, String>) -> Result<(), Error> {
         let vopts = VolumeOptions::try_from(opts)?;
-
-        match vopts.snapshot_of {
-            Some(ref vol) => {
-                let snap = self.root.join(vol).to_str().unwrap().to_owned() + "@" + name;
-                let mut clone_opts = vopts.as_args();
-                clone_opts.push(snap.to_owned());
-
-                // create snapshot from `vol`
-                Cmd::Snapshot.run(&[&snap]).map(|_| ())?;
-                // clone the snapshot
-                Cmd::Clone.run(clone_opts).map(|_| ())?;
-                // promote the snapshot, i.e. break parent-child relationship with `vol`
-                Cmd::Promote.run(&[snap]).map(|_| ())
-            }
-            None => {
-                let mut create_opts = vopts.as_args();
-                let mut no_mount = vec!["-o".to_string(), "mountpoint=none".to_string()];
-                create_opts.append(&mut no_mount);
-                create_opts.push(self.root.join(name).to_str().unwrap().to_string());
-                Cmd::Create.run(create_opts).map(|_| ())
-            }
+        Cmd::Create {
+            vol: name.to_string(),
+            opts: vopts,
         }
+        .run(&self.root)
+        .map(|_| ())
     }
 
     fn do_remove(&self, name: &str) -> Result<(), Error> {
         match self.mounts.try_lock() {
             Ok(ref mut mutex) => match mutex.get(name) {
-                None => Cmd::Destroy.run(&[self.root.join(name)]).map(|_| ()),
+                None => Cmd::Destroy {
+                    vol: name.to_string(),
+                }
+                .run(&self.root)
+                .map(|_| ()),
+
                 Some(by) => Err(Error::VolInUseError(
                     name.to_string(),
                     by.iter().cloned().collect(),
@@ -301,17 +337,13 @@ impl Zfs {
         match self.mounts.try_lock() {
             Ok(ref mut mutex) => {
                 let mountpoint = if !mutex.contains_key(name) {
-                    let root_mountpoint = self.get_mountpoint(self.root.to_str().unwrap())?;
-                    Cmd::Mount
-                        .run(&[
-                            String::from("-o"),
-                            String::from("mountpoint=")
-                                + root_mountpoint.join(name).to_str().unwrap(),
-                            String::from(self.root.join(name).to_str().unwrap()),
-                        ])
-                        .map(|_| self.get_mountpoint(&name))?
+                    Cmd::Mount {
+                        vol: name.to_string(),
+                    }
+                    .run(&self.root)
+                    .map(|_| self.get_mountpoint(name))?
                 } else {
-                    self.get_mountpoint(&name)
+                    self.get_mountpoint(name)
                 };
 
                 mutex
@@ -337,7 +369,11 @@ impl Zfs {
                         name.to_string(),
                         by.iter().cloned().collect(),
                     )),
-                    None => Cmd::Unmount.run(&[name]).map(|_| ()),
+                    None => Cmd::Unmount {
+                        vol: name.to_string(),
+                    }
+                    .run(&self.root)
+                    .map(|_| ()),
                 }
             }
             Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
@@ -345,24 +381,18 @@ impl Zfs {
     }
 
     fn get_mountpoint(&self, name: &str) -> Result<PathBuf, Error> {
-        let out = Cmd::List.run(&[
-            "-H",
-            "-o",
-            "mountpoint",
-            self.root.join(name).to_str().unwrap(),
-        ])?;
-        let stdout = String::from_utf8(out).expect("Invalid Utf8 on process stdout");
-        Ok(PathBuf::from(stdout.lines().nth(0).expect("Empty result")))
+        let stdout = Cmd::GetMountpoint {
+            vol: name.to_string(),
+        }
+        .run(&self.root)?;
+        Ok(PathBuf::from(OsString::from_vec(stdout)))
     }
 
     fn inspect(&self, name: &str) -> Result<Dataset, Error> {
-        let out = Cmd::List.run(&[
-            "-H",
-            "-p",
-            "-o",
-            "name,mountpoint,creation,used,avail",
-            self.root.join(name).to_str().unwrap(),
-        ])?;
+        let out = Cmd::Inspect {
+            vol: name.to_string(),
+        }
+        .run(&self.root)?;
         parse_dataset(&out)
             .map(|mut ds| {
                 ds.name = Path::new(&ds.name)
@@ -377,15 +407,7 @@ impl Zfs {
     }
 
     fn inspect_all(&self) -> Result<Vec<Dataset>, Error> {
-        let out = Cmd::List.run(&[
-            "-H",
-            "-p",
-            "-r",
-            "-o",
-            "name,mountpoint,creation,used,avail",
-            self.root.to_str().unwrap(),
-        ])?;
-
+        let out = Cmd::List.run(&self.root)?;
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
             .has_headers(false)
