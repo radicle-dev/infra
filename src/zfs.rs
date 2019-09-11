@@ -59,7 +59,7 @@ impl Cmd {
 
             Cmd::Mount { vol } => {
                 let root_mountpoint = ZfsCmd::User.run(|zfs| {
-                    zfs.arg("get").args(&["-H", "-o", "value"]).arg(root)
+                    zfs.args(&["get", "mountpoint", "-H", "-o", "value"]).arg(root)
                 }).map(|stdout| PathBuf::from(OsString::from_vec(stdout)))?;
                 let opt = format!("mountpoint={}", root_mountpoint.join(vol).to_str().unwrap());
                 ZfsCmd::Sudo.run(|zfs| zfs.arg("set").arg(opt).arg(root.join(vol)))
@@ -82,7 +82,7 @@ impl Cmd {
             }),
 
             Cmd::GetMountpoint { vol } => {
-                ZfsCmd::User.run(|zfs| zfs.arg("get").args(&["-H", "-o", "value"]).arg(root.join(vol)))
+                ZfsCmd::User.run(|zfs| zfs.args(&["get", "mountpoint", "-H", "-o", "value"]).arg(root.join(vol)))
             }
 
             Cmd::Inspect { vol } => ZfsCmd::User.run(|zfs| {
