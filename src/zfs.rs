@@ -31,50 +31,67 @@ enum Cmd {
 impl Cmd {
     fn run(&self, root: &PathBuf) -> Result<Vec<u8>, Error> {
         match self {
-            Cmd::Create { vol, opts } => match opts.snapshot_of {
-                Some(ref from) => {
-                    // snapshot the `from` fs
-                    let snap = format!("{}@{}", root.join(from).to_str().unwrap(), vol);
-                    ZfsCmd::User.run(|zfs| zfs.arg("snapshot").arg(&snap))?;
-                    // clone the snapshot as `vol`
-                    ZfsCmd::User.run(|zfs| {
-                        zfs.arg("clone")
-                            .args(opts.as_args())
-                            .arg(snap.to_owned())
-                            .arg(root.join(vol))
-                    })?;
-                    // finally, promote `vol` so `from` can be destroyed
-                    ZfsCmd::User.run(|zfs| zfs.arg("promote").arg(root.join(vol)))
-                }
-                None => ZfsCmd::User.run(|zfs| {
-                    zfs.arg("create")
-                        .args(opts.as_args())
-                        .args(&["-o", "mountpoint=none"])
-                        .arg(root.join(vol))
-                }).or_else(|e| match e {
-                    Error::CmdError(_, ref stderr) => String::from_utf8_lossy(stderr)
-                        .rfind("filesystem successfully created, but it may only be mounted by root")
-                        .map(|_| Ok(Vec::new()))
-                        .unwrap_or(Err(e)),
+            Cmd::Create { vol, opts } => {
+                fn ignore_mount_error(e: Error) -> Result<Vec<u8>, Error> {
+                    match e {
+                        Error::CmdError(_, ref stderr) => {
+                            String::from_utf8_lossy(stderr)
+                                .rfind("filesystem successfully created, but it may only be mounted by root")
+                                .map(|_| Ok(Vec::new()))
+                                .unwrap_or(Err(e))
+                        },
                         _ => Err(e),
-                }),
-            },
+                    }
+                }
+
+                match opts.snapshot_of {
+                    Some(ref from) => {
+                        // snapshot the `from` fs
+                        let snap = format!("{}@{}", root.join(from).to_str().unwrap(), vol);
+                        ZfsCmd::User.run(|zfs| zfs.arg("snapshot").arg(&snap))?;
+                        // clone the snapshot as `vol`
+                        ZfsCmd::User
+                            .run(|zfs| {
+                                zfs.arg("clone")
+                                    .args(opts.as_args())
+                                    .args(&["-o", "mountpoint=none"])
+                                    .arg(snap.to_owned())
+                                    .arg(root.join(vol))
+                            })
+                            .or_else(ignore_mount_error)?;
+                        // finally, promote `vol` so `from` can be destroyed
+                        ZfsCmd::User.run(|zfs| zfs.arg("promote").arg(root.join(vol)))
+                    }
+                    None => ZfsCmd::User
+                        .run(|zfs| {
+                            zfs.arg("create")
+                                .args(opts.as_args())
+                                .args(&["-o", "mountpoint=none"])
+                                .arg(root.join(vol))
+                        })
+                        .or_else(ignore_mount_error),
+                }
+            }
 
             Cmd::Destroy { vol } => ZfsCmd::User.run(|zfs| zfs.arg("destroy").arg(root.join(vol))),
 
             Cmd::Mount { vol } => {
-                let root_mountpoint = ZfsCmd::User.run(|zfs| {
-                    zfs.args(&["get", "mountpoint", "-H", "-o", "value"]).arg(root)
-                }).and_then(|stdout| {
-                    let s = String::from_utf8(stdout).expect("stdout not utf8");
-                    let l = s.lines().nth(0);
-                    match l {
-                        None | Some("none") | Some("") => {
-                            Err(Error::CmdError("No root mountpoint".to_string(), Vec::new()))
-                        },
-                        Some(x) => Ok(PathBuf::from(x)),
-                    }
-                })?;
+                let root_mountpoint = ZfsCmd::User
+                    .run(|zfs| {
+                        zfs.args(&["get", "mountpoint", "-H", "-o", "value"])
+                            .arg(root)
+                    })
+                    .and_then(|stdout| {
+                        let s = String::from_utf8(stdout).expect("stdout not utf8");
+                        let l = s.lines().nth(0);
+                        match l {
+                            None | Some("none") | Some("") => Err(Error::CmdError(
+                                "No root mountpoint".to_string(),
+                                Vec::new(),
+                            )),
+                            Some(x) => Ok(PathBuf::from(x)),
+                        }
+                    })?;
                 let opt = format!("mountpoint={}", root_mountpoint.join(vol).to_str().unwrap());
                 ZfsCmd::Sudo.run(|zfs| zfs.arg("set").arg(opt).arg(root.join(vol)))
             }
@@ -86,21 +103,23 @@ impl Cmd {
             Cmd::List => ZfsCmd::User.run(|zfs| {
                 zfs.arg("list")
                     .args(&[
-                    "-H",
-                    "-p",
-                    "-r",
-                    "-o",
-                    "name,mountpoint,creation,used,avail",
-                ])
-                .arg(root)
+                        "-H",
+                        "-p",
+                        "-r",
+                        "-o",
+                        "name,mountpoint,creation,used,avail",
+                    ])
+                    .arg(root)
             }),
 
-            Cmd::GetMountpoint { vol } => {
-                ZfsCmd::User.run(|zfs| zfs.args(&["get", "mountpoint", "-H", "-o", "value"]).arg(root.join(vol)))
-            }
+            Cmd::GetMountpoint { vol } => ZfsCmd::User.run(|zfs| {
+                zfs.args(&["get", "mountpoint", "-H", "-o", "value"])
+                    .arg(root.join(vol))
+            }),
 
             Cmd::Inspect { vol } => ZfsCmd::User.run(|zfs| {
-                zfs.arg("list").args(&["-H", "-p", "-o", "name,mountpoint,creation,used,avail"])
+                zfs.arg("list")
+                    .args(&["-H", "-p", "-o", "name,mountpoint,creation,used,avail"])
                     .arg(root.join(vol))
             }),
         }
