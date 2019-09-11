@@ -1,11 +1,9 @@
 use std::borrow::BorrowMut;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::ffi::OsString;
 use std::fmt;
 use std::fmt::Display;
 use std::io;
-use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -60,7 +58,16 @@ impl Cmd {
             Cmd::Mount { vol } => {
                 let root_mountpoint = ZfsCmd::User.run(|zfs| {
                     zfs.args(&["get", "mountpoint", "-H", "-o", "value"]).arg(root)
-                }).map(|stdout| PathBuf::from(OsString::from_vec(stdout)))?;
+                }).and_then(|stdout| {
+                    let s = String::from_utf8(stdout).expect("stdout not utf8");
+                    let l = s.lines().nth(0);
+                    match l {
+                        None | Some("none") | Some("") => {
+                            Err(Error::CmdError("No root mountpoint".to_string(), Vec::new()))
+                        },
+                        Some(x) => Ok(PathBuf::from(x)),
+                    }
+                })?;
                 let opt = format!("mountpoint={}", root_mountpoint.join(vol).to_str().unwrap());
                 ZfsCmd::Sudo.run(|zfs| zfs.arg("set").arg(opt).arg(root.join(vol)))
             }
@@ -387,11 +394,21 @@ impl Zfs {
     }
 
     fn get_mountpoint(&self, name: &str) -> Result<PathBuf, Error> {
-        let stdout = Cmd::GetMountpoint {
+        Cmd::GetMountpoint {
             vol: name.to_string(),
         }
-        .run(&self.root)?;
-        Ok(PathBuf::from(OsString::from_vec(stdout)))
+        .run(&self.root)
+        .and_then(|stdout| {
+            let s = String::from_utf8(stdout).expect("stdout not utf8");
+            let l = s.lines().nth(0);
+            match l {
+                None | Some("none") | Some("") => Err(Error::CmdError(
+                    format!("No mountpoint for {}", name),
+                    Vec::new(),
+                )),
+                Some(x) => Ok(PathBuf::from(x)),
+            }
+        })
     }
 
     fn inspect(&self, name: &str) -> Result<Dataset, Error> {
