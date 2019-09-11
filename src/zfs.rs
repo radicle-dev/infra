@@ -73,7 +73,9 @@ impl Cmd {
                 }
             }
 
-            Cmd::Destroy { vol } => ZfsCmd::User.run(|zfs| zfs.arg("destroy").arg(root.join(vol))),
+            Cmd::Destroy { vol } => ZfsCmd::User.run(|zfs| {
+                zfs.args(&["destroy", "-r"]).arg(root.join(vol))
+            }),
 
             Cmd::Mount { vol } => {
                 let root_mountpoint = ZfsCmd::User
