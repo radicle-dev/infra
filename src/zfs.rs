@@ -62,7 +62,9 @@ impl Cmd {
                                     .arg(snap.to_owned())
                                     .arg(root.join(vol))
                             })
-                            .or_else(ignore_mount_error)
+                            .or_else(ignore_mount_error)?;
+                        // finally, mark the snapshot for deletion
+                        ZfsCmd::User.run(|zfs| zfs.arg("destroy").arg("-d").arg(&snap))
                     }
                     None => ZfsCmd::User
                         .run(|zfs| {
