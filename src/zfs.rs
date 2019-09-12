@@ -3,7 +3,9 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
+use std::fs;
 use std::io;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -94,12 +96,20 @@ impl Cmd {
                             Some(x) => Ok(PathBuf::from(x)),
                         }
                     })?;
-                let opt = format!("mountpoint={}", root_mountpoint.join(vol).to_str().unwrap());
-                ZfsCmd::Sudo.run(|zfs| zfs.arg("set").arg(opt).arg(root.join(vol)))
+                let mountpoint = root_mountpoint.join(vol);
+
+                let opt = format!("mountpoint={}", mountpoint.to_str().unwrap());
+                ZfsCmd::Sudo.run(|zfs| zfs.arg("set").arg(opt).arg(root.join(vol)))?;
+
+                // adjust permissions on the mountpoint - others shoudn't be able to browse the
+                // mount
+                fs::set_permissions(mountpoint, fs::Permissions::from_mode(0o750))
+                    .map_err(|e| e.into())
+                    .map(|_| Vec::new())
             }
 
             Cmd::Unmount { vol } => {
-                ZfsCmd::Sudo.run(|zfs| zfs.arg("set").arg("mountpoint=none").arg(root.join(vol)))
+                ZfsCmd::Sudo.run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(root.join(vol)))
             }
 
             Cmd::List => ZfsCmd::User.run(|zfs| {
