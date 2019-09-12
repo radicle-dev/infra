@@ -364,16 +364,16 @@ impl Zfs {
     fn do_remove(&self, name: &str) -> Result<(), Error> {
         match self.mounts.try_lock() {
             Ok(ref mut mutex) => match mutex.get(name) {
-                None => Cmd::Destroy {
+                Some(by) if !by.is_empty() => Err(Error::VolInUseError(
+                    name.to_string(),
+                    by.iter().cloned().collect(),
+                )),
+
+                _ => Cmd::Destroy {
                     vol: name.to_string(),
                 }
                 .run(&self.root)
                 .map(|_| ()),
-
-                Some(by) => Err(Error::VolInUseError(
-                    name.to_string(),
-                    by.iter().cloned().collect(),
-                )),
             },
             Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
         }
