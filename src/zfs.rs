@@ -34,20 +34,6 @@ impl Cmd {
     fn run(&self, root: &PathBuf) -> Result<Vec<u8>, Error> {
         match self {
             Cmd::Create { vol, opts } => {
-                // https://github.com/zfsonlinux/zfs/blob/ad0b23b14ab37a54764122fe8341e62f10245e15/cmd/zfs/zfs_main.c#L738
-                fn ignore_mount_error(e: Error) -> Result<Vec<u8>, Error> {
-                    match e {
-                        Error::CmdError(_, ref stderr) => String::from_utf8_lossy(stderr)
-                            .rfind(
-                                "filesystem successfully created, \
-                                 but it may only be mounted by root",
-                            )
-                            .map(|_| Ok(Vec::new()))
-                            .unwrap_or(Err(e)),
-                        _ => Err(e),
-                    }
-                }
-
                 match opts.snapshot_of {
                     Some(ref from) => {
                         // snapshot the `from` fs
@@ -88,30 +74,41 @@ impl Cmd {
                             .arg(root)
                     })
                     .and_then(|stdout| {
-                        let s = String::from_utf8(stdout).expect("stdout not utf8");
-                        let l = s.lines().nth(0);
-                        match l {
-                            None | Some("none") | Some("") => Err(Error::CmdError(
-                                "No root mountpoint".to_string(),
-                                Vec::new(),
-                            )),
-                            Some(x) => Ok(PathBuf::from(x)),
-                        }
+                        as_pathbuf(stdout).ok_or_else(|| {
+                            Error::NoMountpointError(root.to_str().unwrap().to_string())
+                        })
                     })?;
                 let mountpoint = root_mountpoint.join(vol);
 
-                let opt = format!("mountpoint={}", mountpoint.to_str().unwrap());
-                ZfsCmd::Sudo.run(|zfs| zfs.arg("set").arg(opt).arg(root.join(vol)))?;
+                // create mountpoint and adjust permissions
+                fs::create_dir(&mountpoint)?;
+                fs::set_permissions(&mountpoint, fs::Permissions::from_mode(0o750))?;
 
-                // adjust permissions on the mountpoint - others shoudn't be able to browse the
-                // mount
-                fs::set_permissions(mountpoint, fs::Permissions::from_mode(0o750))
-                    .map_err(|e| e.into())
-                    .map(|_| Vec::new())
+                ZfsCmd::Sudo.run(|zfs| {
+                    zfs.arg("set")
+                        .arg(format!("mountpoint={}", mountpoint.to_str().unwrap()))
+                        .arg(root.join(vol))
+                })
             }
 
             Cmd::Unmount { vol } => {
-                ZfsCmd::Sudo.run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(root.join(vol)))
+                let mountpoint = Cmd::GetMountpoint {
+                    vol: vol.to_string(),
+                }
+                .run(root)
+                .and_then(|stdout| {
+                    as_pathbuf(stdout).ok_or_else(|| Error::NoMountpointError(vol.to_string()))
+                });
+
+                ZfsCmd::Sudo
+                    .run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(root.join(vol)))?;
+
+                if let Ok(dir) = mountpoint {
+                    fs::remove_dir(dir)?;
+                    Ok(Vec::new())
+                } else {
+                    Ok(Vec::new())
+                }
             }
 
             Cmd::List => ZfsCmd::User.run(|zfs| {
@@ -193,6 +190,7 @@ pub enum Error {
     CmdError(String, Vec<u8>),
     CmdOutputParseError(csv::Error),
     VolumeOptionsError(OptsError),
+    NoMountpointError(String),
 }
 
 impl From<io::Error> for Error {
@@ -223,6 +221,7 @@ impl From<Error> for ErrorResponse {
             }
             Error::CmdOutputParseError(e) => e.to_string(),
             Error::VolumeOptionsError(e) => e.to_string(),
+            Error::NoMountpointError(vol) => format!("No mountpoint for {}", vol),
         };
         ErrorResponse { err }
     }
@@ -433,15 +432,7 @@ impl Zfs {
         }
         .run(&self.root)
         .and_then(|stdout| {
-            let s = String::from_utf8(stdout).expect("stdout not utf8");
-            let l = s.lines().nth(0);
-            match l {
-                None | Some("none") | Some("") => Err(Error::CmdError(
-                    format!("No mountpoint for {}", name),
-                    Vec::new(),
-                )),
-                Some(x) => Ok(PathBuf::from(x)),
-            }
+            as_pathbuf(stdout).ok_or_else(|| Error::NoMountpointError(name.to_string()))
         })
     }
 
@@ -586,6 +577,31 @@ impl VolumePlugin for Zfs {
                 scope: Scope::Local,
             },
         }
+    }
+}
+
+// Helpers
+
+// https://github.com/zfsonlinux/zfs/blob/ad0b23b14ab37a54764122fe8341e62f10245e15/cmd/zfs/zfs_main.c#L738
+fn ignore_mount_error(e: Error) -> Result<Vec<u8>, Error> {
+    match e {
+        Error::CmdError(_, ref stderr) => String::from_utf8_lossy(stderr)
+            .rfind(
+                "filesystem successfully created, \
+                 but it may only be mounted by root",
+            )
+            .map(|_| Ok(Vec::new()))
+            .unwrap_or(Err(e)),
+        _ => Err(e),
+    }
+}
+
+fn as_pathbuf(stdout: Vec<u8>) -> Option<PathBuf> {
+    let s = String::from_utf8(stdout).expect("stdout not utf8");
+    let l = s.lines().nth(0);
+    match l {
+        None | Some("none") | Some("") => None,
+        Some(x) => Some(PathBuf::from(x)),
     }
 }
 
