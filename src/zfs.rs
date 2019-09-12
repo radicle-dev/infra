@@ -32,14 +32,16 @@ impl Cmd {
     fn run(&self, root: &PathBuf) -> Result<Vec<u8>, Error> {
         match self {
             Cmd::Create { vol, opts } => {
+                // https://github.com/zfsonlinux/zfs/blob/ad0b23b14ab37a54764122fe8341e62f10245e15/cmd/zfs/zfs_main.c#L738
                 fn ignore_mount_error(e: Error) -> Result<Vec<u8>, Error> {
                     match e {
-                        Error::CmdError(_, ref stderr) => {
-                            String::from_utf8_lossy(stderr)
-                                .rfind("filesystem successfully created, but it may only be mounted by root")
-                                .map(|_| Ok(Vec::new()))
-                                .unwrap_or(Err(e))
-                        },
+                        Error::CmdError(_, ref stderr) => String::from_utf8_lossy(stderr)
+                            .rfind(
+                                "filesystem successfully created, \
+                                 but it may only be mounted by root",
+                            )
+                            .map(|_| Ok(Vec::new()))
+                            .unwrap_or(Err(e)),
                         _ => Err(e),
                     }
                 }
