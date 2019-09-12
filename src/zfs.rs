@@ -375,30 +375,27 @@ impl Zfs {
                 .run(&self.root)
                 .map(|_| ()),
             },
+
             Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
         }
     }
 
     fn do_mount(&self, name: &str, caller: &str) -> Result<PathBuf, Error> {
         match self.mounts.try_lock() {
-            Ok(ref mut the_mounts) => {
-                let mountpoint = if !the_mounts.contains_key(name) {
-                    Cmd::Mount {
-                        vol: name.to_string(),
-                    }
-                    .run(&self.root)
-                    .map(|_| self.get_mountpoint(name))?
-                } else {
-                    self.get_mountpoint(name)
-                };
-
-                let owners = the_mounts
-                    .entry(name.to_string())
-                    .or_insert_with(HashSet::new);
-                owners.insert(caller.to_string());
-
-                mountpoint
+            Ok(ref mut the_mounts) => Cmd::Mount {
+                vol: name.to_string(),
             }
+            .run(&self.root)
+            .and_then(|_| {
+                self.get_mountpoint(name).map(|mountpoint| {
+                    let owners = the_mounts
+                        .entry(name.to_string())
+                        .or_insert_with(HashSet::new);
+                    owners.insert(caller.to_string());
+                    mountpoint
+                })
+            }),
+
             Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
         }
     }
@@ -423,6 +420,7 @@ impl Zfs {
                     .map(|_| ()),
                 }
             }
+
             Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
         }
     }
