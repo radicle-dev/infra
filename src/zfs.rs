@@ -60,9 +60,7 @@ impl Cmd {
                                     .arg(snap.to_owned())
                                     .arg(root.join(vol))
                             })
-                            .or_else(ignore_mount_error)?;
-                        // finally, promote `vol` so `from` can be destroyed
-                        ZfsCmd::User.run(|zfs| zfs.arg("promote").arg(root.join(vol)))
+                            .or_else(ignore_mount_error)
                     }
                     None => ZfsCmd::User
                         .run(|zfs| {
