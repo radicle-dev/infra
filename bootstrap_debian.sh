@@ -41,6 +41,7 @@ function apt_packages {
         kata-proxy \
         kata-runtime \
         kata-shim \
+        jq \
         zockervols
 }
 
