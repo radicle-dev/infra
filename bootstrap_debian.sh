@@ -186,29 +186,31 @@ function users_groups {
 }
 
 function services {
-    systemctl daemon-reload
+    local units=(
+        docker
+        zockervols.socket
+        docker-volume-prune.timer
+        docker-system-prune.timer
+    )
 
-    systemctl enable docker
-    systemctl enable zockervols.socket
-    systemctl enable docker-volume-prune.timer
-
-    systemctl restart docker
-    systemctl start zockervols.socket
-    systemctl start docker-volume-prune.timer
-
-    local -i cpus
-    local -i agents
+    local -i cpus agents
 
     cpus=$(nproc)
     cpus=$((cpus < 2 ? 2 : cpus))
 
     agents=$((cpus / 2))
-
     for i in $(seq 0 $((agents - 1)))
     do
-        for cmd in enable start
+        units+=("buildkite-agent@${i}")
+    done
+
+    systemctl daemon-reload
+
+    for unit in "${units[@]}"
+    do
+        for cmd in enable restart
         do
-            systemctl $cmd "buildkite-agent@${i}"
+            systemctl $cmd "$unit"
         done
     done
 }
