@@ -38,7 +38,11 @@ impl Cmd {
                 match opts.snapshot_of {
                     Some(ref from) => {
                         // snapshot the `from` fs
-                        let snap = format!("{}@{}", root.join(from).to_str().unwrap(), safe_vol);
+                        let snap = format!(
+                            "{}@{}",
+                            root.join(sanitize_vol(from)).to_str().unwrap(),
+                            safe_vol
+                        );
                         ZfsCmd::User.run(|zfs| zfs.arg("snapshot").arg(&snap))?;
                         // clone the snapshot as `vol`
                         ZfsCmd::User
