@@ -1,0 +1,7 @@
+[Unit]
+Description=Run docker system prune
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker system prune --all --volumes --force
+User=buildkite-agent
