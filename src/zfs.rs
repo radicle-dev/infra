@@ -41,7 +41,7 @@ impl Cmd {
                         // snapshot the `from` fs
                         let snap = format!(
                             "{}@{}",
-                            sanitize_vol(from),
+                            root.join(sanitize_vol(from)).to_str().unwrap(),
                             SystemTime::now()
                                 .duration_since(SystemTime::UNIX_EPOCH)
                                 .expect("SystemTime before UNIX epoch!")
