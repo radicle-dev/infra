@@ -9,6 +9,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 
 use byte_unit::Byte;
 use chrono::prelude::*;
@@ -40,8 +41,11 @@ impl Cmd {
                         // snapshot the `from` fs
                         let snap = format!(
                             "{}@{}",
-                            root.join(sanitize_vol(from)).to_str().unwrap(),
-                            safe_vol
+                            sanitize_vol(from),
+                            SystemTime::now()
+                                .duration_since(SystemTime::UNIX_EPOCH)
+                                .expect("SystemTime before UNIX epoch!")
+                                .as_nanos()
                         );
                         ZfsCmd::User.run(|zfs| zfs.arg("snapshot").arg(&snap))?;
                         // clone the snapshot as `vol`
@@ -53,7 +57,8 @@ impl Cmd {
                                     .arg(snap.to_owned())
                                     .arg(root.join(safe_vol))
                             })
-                            .or_else(ignore_mount_error)?;
+                            .or_else(|e| ignore_already_exists(e).and(Ok(Vec::new())))
+                            .or_else(|e| ignore_mount_error(e).and(Ok(Vec::new())))?;
                         // finally, mark the snapshot for deletion
                         ZfsCmd::User.run(|zfs| zfs.arg("destroy").arg("-d").arg(&snap))
                     }
@@ -64,7 +69,7 @@ impl Cmd {
                                 .args(&["-o", "mountpoint=none"])
                                 .arg(root.join(safe_vol))
                         })
-                        .or_else(ignore_mount_error),
+                        .or_else(|e| ignore_mount_error(e).map(|_| Vec::new())),
                 }
             }
 
@@ -353,13 +358,7 @@ impl Zfs {
     fn exists(&self, name: &str) -> Result<bool, Error> {
         self.get_mountpoint(name)
             .and(Ok(true))
-            .or_else(|e| match e {
-                Error::CmdError(_, ref stderr) => String::from_utf8_lossy(stderr)
-                    .rfind("dataset does not exist")
-                    .map(|_| Ok(false))
-                    .unwrap_or(Err(e)),
-                _ => Err(e),
-            })
+            .or_else(|e| ignore_does_not_exist(e).map(|_| false))
     }
 
     fn do_create(&self, name: &str, opts: HashMap<String, String>) -> Result<(), Error> {
@@ -593,14 +592,27 @@ impl VolumePlugin for Zfs {
 // Helpers
 
 // https://github.com/zfsonlinux/zfs/blob/ad0b23b14ab37a54764122fe8341e62f10245e15/cmd/zfs/zfs_main.c#L738
-fn ignore_mount_error(e: Error) -> Result<Vec<u8>, Error> {
+fn ignore_mount_error(e: Error) -> Result<(), Error> {
+    ignore_stderr_msg(
+        e,
+        "filesystem successfully created, \
+         but it may only be mounted by root",
+    )
+}
+
+fn ignore_already_exists(e: Error) -> Result<(), Error> {
+    ignore_stderr_msg(e, "dataset already exists")
+}
+
+fn ignore_does_not_exist(e: Error) -> Result<(), Error> {
+    ignore_stderr_msg(e, "dataset does not exist")
+}
+
+fn ignore_stderr_msg(e: Error, msg: &str) -> Result<(), Error> {
     match e {
         Error::CmdError(_, ref stderr) => String::from_utf8_lossy(stderr)
-            .rfind(
-                "filesystem successfully created, \
-                 but it may only be mounted by root",
-            )
-            .map(|_| Ok(Vec::new()))
+            .rfind(msg)
+            .map(|_| Ok(()))
             .unwrap_or(Err(e)),
         _ => Err(e),
     }
