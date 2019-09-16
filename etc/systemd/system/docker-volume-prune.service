@@ -3,5 +3,5 @@ Description=Prune build cache docker volumes
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/docker volume prune --filter=label=build_cache
+ExecStart=/usr/bin/docker volume prune --filter=label=build_cache --force
 User=buildkite-agent
