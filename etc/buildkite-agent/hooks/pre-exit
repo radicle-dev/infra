@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-echo "Cleaning up build-${BUILDKITE_BUILD_ID}"
-docker kill "build-${BUILDKITE_BUILD_ID}" || true
-docker rm   "build-${BUILDKITE_BUILD_ID}" || true
+declare -r container="build-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}"
+echo "Cleaning up container $container"
+docker kill "$container" || true
+docker rm   "$container" || true

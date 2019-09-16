@@ -85,7 +85,7 @@ timeout \
     --signal=TERM \
     50m \
     docker run --tty --rm \
-        --name="build-${BUILDKITE_BUILD_ID}" \
+        --name="build-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}" \
         --read-only \
         --user="${uid}:${gid}" \
         --cap-drop=ALL \
