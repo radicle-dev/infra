@@ -51,7 +51,7 @@ impl Cmd {
                                     .args(opts.as_args())
                                     .args(&["-o", "mountpoint=none"])
                                     .arg(snap.to_owned())
-                                    .arg(root.join(vol))
+                                    .arg(root.join(safe_vol))
                             })
                             .or_else(ignore_mount_error)?;
                         // finally, mark the snapshot for deletion
