@@ -50,10 +50,3 @@ else
     # end of the build
     export DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume},volume-opt=quota=1GiB"
 fi
-
-if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/* ]]
-then
-    echo "Docker image ${DOCKER_IMAGE} not allowed"
-    exit 1
-fi
-

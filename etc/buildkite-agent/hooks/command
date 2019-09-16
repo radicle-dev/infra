@@ -22,6 +22,14 @@ then
     exit $?
 fi
 
+: "${DOCKER_IMAGE:=None}"
+
+if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/* ]]
+then
+    echo "Docker image ${DOCKER_IMAGE} not allowed"
+    exit 1
+fi
+
 # Pass environment.
 
 # Subset of the environment populated by buildkite.
