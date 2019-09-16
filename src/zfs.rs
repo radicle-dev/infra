@@ -36,8 +36,9 @@ impl Cmd {
             Cmd::Create { vol, opts } => {
                 match opts.snapshot_of {
                     Some(ref from) => {
+                        let safe_vol = vol.replace("/", "_");
                         // snapshot the `from` fs
-                        let snap = format!("{}@{}", root.join(from).to_str().unwrap(), vol);
+                        let snap = format!("{}@{}", root.join(from).to_str().unwrap(), safe_vol);
                         ZfsCmd::User.run(|zfs| zfs.arg("snapshot").arg(&snap))?;
                         // clone the snapshot as `vol`
                         ZfsCmd::User
