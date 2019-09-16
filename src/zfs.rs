@@ -34,9 +34,9 @@ impl Cmd {
     fn run(&self, root: &PathBuf) -> Result<Vec<u8>, Error> {
         match self {
             Cmd::Create { vol, opts } => {
+                let safe_vol = sanitize_vol(vol);
                 match opts.snapshot_of {
                     Some(ref from) => {
-                        let safe_vol = vol.replace("/", "_");
                         // snapshot the `from` fs
                         let snap = format!("{}@{}", root.join(from).to_str().unwrap(), safe_vol);
                         ZfsCmd::User.run(|zfs| zfs.arg("snapshot").arg(&snap))?;
@@ -58,17 +58,19 @@ impl Cmd {
                             zfs.arg("create")
                                 .args(opts.as_args())
                                 .args(&["-o", "mountpoint=none"])
-                                .arg(root.join(vol))
+                                .arg(root.join(safe_vol))
                         })
                         .or_else(ignore_mount_error),
                 }
             }
 
-            Cmd::Destroy { vol } => {
-                ZfsCmd::User.run(|zfs| zfs.args(&["destroy", "-r"]).arg(root.join(vol)))
-            }
+            Cmd::Destroy { vol } => ZfsCmd::User.run(|zfs| {
+                zfs.args(&["destroy", "-r"])
+                    .arg(root.join(sanitize_vol(vol)))
+            }),
 
             Cmd::Mount { vol } => {
+                let safe_vol = sanitize_vol(vol);
                 let root_mountpoint = ZfsCmd::User
                     .run(|zfs| {
                         zfs.args(&["get", "mountpoint", "-H", "-o", "value"])
@@ -79,7 +81,7 @@ impl Cmd {
                             Error::NoMountpointError(root.to_str().unwrap().to_string())
                         })
                     })?;
-                let mountpoint = root_mountpoint.join(vol);
+                let mountpoint = root_mountpoint.join(&safe_vol);
 
                 // create mountpoint and adjust permissions
                 fs::create_dir(&mountpoint)?;
@@ -88,21 +90,24 @@ impl Cmd {
                 ZfsCmd::Sudo.run(|zfs| {
                     zfs.arg("set")
                         .arg(format!("mountpoint={}", mountpoint.to_str().unwrap()))
-                        .arg(root.join(vol))
+                        .arg(root.join(safe_vol))
                 })
             }
 
             Cmd::Unmount { vol } => {
+                let safe_vol = sanitize_vol(vol);
                 let mountpoint = Cmd::GetMountpoint {
-                    vol: vol.to_string(),
+                    vol: safe_vol.clone(),
                 }
                 .run(root)
                 .and_then(|stdout| {
-                    as_pathbuf(stdout).ok_or_else(|| Error::NoMountpointError(vol.to_string()))
+                    as_pathbuf(stdout).ok_or_else(|| Error::NoMountpointError(safe_vol.clone()))
                 });
 
-                ZfsCmd::Sudo
-                    .run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(root.join(vol)))?;
+                ZfsCmd::Sudo.run(|zfs| {
+                    zfs.args(&["set", "mountpoint=none"])
+                        .arg(root.join(safe_vol))
+                })?;
 
                 if let Ok(dir) = mountpoint {
                     fs::remove_dir(dir)?;
@@ -126,13 +131,13 @@ impl Cmd {
 
             Cmd::GetMountpoint { vol } => ZfsCmd::User.run(|zfs| {
                 zfs.args(&["get", "mountpoint", "-H", "-o", "value"])
-                    .arg(root.join(vol))
+                    .arg(root.join(sanitize_vol(vol)))
             }),
 
             Cmd::Inspect { vol } => ZfsCmd::User.run(|zfs| {
                 zfs.arg("list")
                     .args(&["-H", "-p", "-o", "name,mountpoint,creation,used,avail"])
-                    .arg(root.join(vol))
+                    .arg(root.join(sanitize_vol(vol)))
             }),
         }
     }
@@ -604,6 +609,10 @@ fn as_pathbuf(stdout: Vec<u8>) -> Option<PathBuf> {
         None | Some("none") | Some("") => None,
         Some(x) => Some(PathBuf::from(x)),
     }
+}
+
+fn sanitize_vol(vol: &str) -> String {
+    vol.replace("/", "_")
 }
 
 #[cfg(test)]
