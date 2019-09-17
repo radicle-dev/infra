@@ -66,7 +66,7 @@ done
 
 declare -r tmp_size=200000000 # 200MB
 volumes=(
-    "--mount=type=tmpfs,dst=/tmp,tmpfs-size=$tmp_size"
+    "--tmpfs=/tmp:rw,exec,nosuid,size=$tmp_size"
     "--mount=${DOCKER_CACHE_MOUNT}"
     "--mount=type=bind,src=${BUILDKITE_BUILD_CHECKOUT_PATH},dst=/build"
 )
