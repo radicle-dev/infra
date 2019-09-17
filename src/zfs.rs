@@ -8,10 +8,11 @@ use std::io;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use byte_unit::Byte;
+use chashmap::CHashMap;
 use chrono::prelude::*;
 use chrono::serde::ts_seconds;
 use itertools::Itertools;
@@ -375,14 +376,14 @@ impl TryFrom<HashMap<String, String>> for VolumeOptions {
 #[derive(Clone, Debug)]
 pub struct Zfs {
     root: PathBuf,
-    mounts: Arc<Mutex<HashMap<String, HashSet<String>>>>,
+    mounts: Arc<CHashMap<String, HashSet<String>>>,
 }
 
 impl Zfs {
     pub fn new(root: PathBuf) -> Self {
         Self {
             root,
-            mounts: Arc::new(Mutex::new(HashMap::new())),
+            mounts: Arc::new(CHashMap::new()),
         }
     }
 
@@ -398,54 +399,41 @@ impl Zfs {
     }
 
     fn do_remove(&self, name: &str) -> Result<(), Error> {
-        match self.mounts.try_lock() {
-            Ok(ref mut mutex) => match mutex.get(name) {
-                Some(by) if !by.is_empty() => Err(Error::VolInUseError(
-                    name.to_string(),
-                    by.iter().cloned().collect(),
-                )),
+        match self.mounts.get(name) {
+            Some(ref by) if !by.is_empty() => Err(Error::VolInUseError(
+                name.to_string(),
+                by.iter().cloned().collect(),
+            )),
 
-                _ => Cmd::destroy(name).run(&self.root).and(Ok(())),
-            },
-
-            Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
+            _ => Cmd::destroy(name).run(&self.root).and(Ok(())),
         }
     }
 
     fn do_mount(&self, name: &str, caller: &str) -> Result<PathBuf, Error> {
-        match self.mounts.try_lock() {
-            Ok(ref mut the_mounts) => Cmd::mount(name).run(&self.root).and_then(|_| {
-                self.get_mountpoint(name).map(|mountpoint| {
-                    let owners = the_mounts
-                        .entry(name.to_string())
-                        .or_insert_with(HashSet::new);
+        Cmd::mount(name).run(&self.root).and_then(|_| {
+            self.get_mountpoint(name).map(|mountpoint| {
+                self.mounts.alter(name.to_string(), |old| {
+                    let mut owners = old.unwrap_or_default();
                     owners.insert(caller.to_string());
-                    mountpoint
-                })
-            }),
-
-            Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
-        }
+                    Some(owners)
+                });
+                mountpoint
+            })
+        })
     }
 
     fn do_unmount(&self, name: &str, caller: &str) -> Result<(), Error> {
-        match self.mounts.try_lock() {
-            Ok(ref mut the_mounts) => {
-                if let Some(owners) = the_mounts.get_mut(name) {
-                    owners.remove(caller);
-                }
+        if let Some(mut owners) = self.mounts.get_mut(name) {
+            owners.remove(caller);
+        }
 
-                match the_mounts.get(name) {
-                    Some(by) if !by.is_empty() => Err(Error::VolInUseError(
-                        name.to_string(),
-                        by.iter().cloned().collect(),
-                    )),
+        match self.mounts.get(name) {
+            Some(ref by) if !by.is_empty() => Err(Error::VolInUseError(
+                name.to_string(),
+                by.iter().cloned().collect(),
+            )),
 
-                    _ => Cmd::unmount(name).run(&self.root).and(Ok(())),
-                }
-            }
-
-            Err(e) => Err(Error::MountsLockError(name.to_string(), e.to_string())),
+            _ => Cmd::unmount(name).run(&self.root).and(Ok(())),
         }
     }
 

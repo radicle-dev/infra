@@ -9,6 +9,7 @@ license = "MIT"
 
 [dependencies]
 byte-unit = "3.0"
+chashmap = "2.2"
 chrono = { version = "0.4", features = ["serde"] }
 clap = "2.33"
 csv = "1.1"
