@@ -64,6 +64,7 @@ do
     build_env+=( "--env=${var#SECRET_}=${!var}" )
 done
 
+# Volumes
 declare -r tmp_size=200000000 # 200MB
 volumes=(
     "--tmpfs=/tmp:rw,exec,nosuid,size=$tmp_size"
@@ -80,10 +81,12 @@ fi
 uid="$(id -u buildkite-builder)"
 gid="$(id -g buildkite-builder)"
 
+set +e
 timeout \
-    --kill-after=1h \
+    --kill-after="$((BUILD_TIMEOUT_MINUTES + 10))m" \
     --signal=TERM \
-    50m \
+    --verbose \
+    "${BUILD_TIMEOUT_MINUTES}m" \
     docker run --tty --rm \
         --name="build-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}" \
         --read-only \
@@ -96,3 +99,11 @@ timeout \
         "${build_env[@]}" \
         "${DOCKER_IMAGE}"  \
         /bin/sh -c "${BUILDKITE_COMMAND}"
+
+if [[ $? == 124 ]]
+then
+    echo
+    echo "The job timed out after ${BUILD_TIMEOUT_MINUTES} minutes!"
+    echo
+fi
+exit $?

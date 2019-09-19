@@ -2,6 +2,10 @@
 set -eou pipefail
 IFS=$'\n\t'
 
+declare -ri MIN_TIMEOUT_MINUTES=50
+declare -ri MAX_TIMEOUT_MINUTES=240
+declare -i timeout_minutes=$MIN_TIMEOUT_MINUTES
+
 declare -r cache_volume_prefix="cache_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
 declare -r master_cache_volume="${cache_volume_prefix}_${BUILDKITE_PIPELINE_DEFAULT_BRANCH}"
 
@@ -43,6 +47,12 @@ then
     fi
 
     export SECRET_GOOGLE_APPLICATION_CREDENTIALS=/etc/gce/cred.json
+
+    # "Trusted" builds may bump the timeout
+    if [[ "${BUILDKITE_TIMEOUT}" != "false" ]]
+    then
+        timeout_minutes="$((BUILDKITE_TIMEOUT > MAX_TIMEOUT_MINUTES ? MAX_TIMEOUT_MINUTES : BUILDKITE_TIMEOUT))"
+    fi
 else
     # Use kata-containers for isolation
     export DOCKER_RUNTIME=kata-containers
@@ -50,3 +60,5 @@ else
     # end of the build
     export DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume},volume-opt=quota=1GiB"
 fi
+
+export BUILD_TIMEOUT_MINUTES=$timeout_minutes
