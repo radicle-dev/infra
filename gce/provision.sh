@@ -6,12 +6,15 @@ set -eou pipefail
 : "${GCE_NUM_SSDS:=3}"
 : "${GCE_MACHINE_TYPE:=n1-standard-4}"
 
+function realrealpath {
+    realpath "$@" 2>/dev/null || grealpath "$@"
+}
 
 VERSION="$(git rev-parse --short HEAD)"
 CONFIG_BUCKET="eu.artifacts.opensourcecoin.appspot.com/configs"
 declare -i NUM_SSDS
 NUM_SSDS=$((GCE_NUM_SSDS > 8 ? 8 : (GCE_NUM_SSDS < 1 ? 1 : GCE_NUM_SSDS)))
-BOOTSTRAP="$(realpath "$(dirname "${BASH_SOURCE[0]}")/bootstrap_debian.sh")"
+BOOTSTRAP="$(realrealpath "$(dirname "${BASH_SOURCE[0]}")/bootstrap_debian.sh")"
 
 function __wait_boot {
     # TODO: try connecting a few times
@@ -42,7 +45,7 @@ function prepare_boostrap {
     done
 
     local bootstrap_base
-    bootstrap_base="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../bootstrap_debian.sh")"
+    bootstrap_base="$(realrealpath "$(dirname "${BASH_SOURCE[0]}")/../bootstrap_debian.sh")"
 
     local -x __VERSION="$VERSION"
     local -x __STORAGE_DEVICES="${storage_devices[*]}"
