@@ -84,6 +84,16 @@ gid="$(id -g buildkite-builder)"
 
 IFS=$' \t\n' read -ra the_command <<<"${BUILDKITE_COMMAND//$'\n'/ }"
 
+# Ensure the container gets killed - it seems the pre-exit hook is not
+# guaranteed to run when a build gets cancelled by user interventaion
+function fin {
+    local errno=$?
+    docker kill "build-${BUILDKITE_BUILD_ID}" 2>/dev/null || true
+    docker rm   "build-${BUILDKITE_BUILD_ID}" 2>/dev/null || true
+    exit $errno
+}
+trap fin ERR
+
 set +e
 timeout \
     --kill-after="$((BUILD_TIMEOUT_MINUTES + 10))m" \
