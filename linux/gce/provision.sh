@@ -14,7 +14,7 @@ VERSION="$(git rev-parse --short HEAD)"
 CONFIG_BUCKET="eu.artifacts.opensourcecoin.appspot.com/configs"
 declare -i NUM_SSDS
 NUM_SSDS=$((GCE_NUM_SSDS > 8 ? 8 : (GCE_NUM_SSDS < 1 ? 1 : GCE_NUM_SSDS)))
-BOOTSTRAP="$(realrealpath "$(dirname "${BASH_SOURCE[0]}")/bootstrap_debian.sh")"
+BOOTSTRAP="$(realrealpath "$(dirname "${BASH_SOURCE[0]}")/bootstrap.sh")"
 
 function __wait_boot {
     # TODO: try connecting a few times
@@ -24,10 +24,17 @@ function __wait_boot {
 function prepare_static_config {
     echo "Preparing static configuration..."
 
-    local config_archive="buildkite-agent-${VERSION}.tar.gz"
+    local config_archive tmp_dir tmp_archive
+
+    tmp_dir="$(mktemp -d)"
+    config_archive="buildkite-agent-${VERSION}.tar.gz"
+    tmp_archive="$(mktemp)"
 
     set -x
-    git archive --format=tar.gz --output="${config_archive}" HEAD etc
+    git archive --format=tar.gz --output="${tmp_archive}" HEAD linux/etc
+    tar -C "$tmp_dir" --strip-components=1 -xf "${tmp_archive}"
+    tar -C "$tmp_dir" -cvf "${config_archive}" etc
+
     gsutil cp "${config_archive}" "gs://${CONFIG_BUCKET}/${config_archive}"
     set +x
 }
@@ -45,7 +52,7 @@ function prepare_boostrap {
     done
 
     local bootstrap_base
-    bootstrap_base="$(realrealpath "$(dirname "${BASH_SOURCE[0]}")/../bootstrap_debian.sh")"
+    bootstrap_base="$(realrealpath "$(dirname "${BASH_SOURCE[0]}")/../bootstrap.sh")"
 
     local -x __VERSION="$VERSION"
     local -x __STORAGE_DEVICES="${storage_devices[*]}"

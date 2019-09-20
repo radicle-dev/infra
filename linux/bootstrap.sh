@@ -18,7 +18,9 @@ function apt_keys {
         54A647F9048D5688D7DA2ABE6A030B21BA07F4FB # Google (gce sdk)
     )
 
+    set -x
     apt-key adv --keyserver="$keysrv" --recv-keys "${keys[@]}"
+    set +x
 }
 
 function apt_install {
@@ -123,16 +125,15 @@ function storage {
 function config {
     local config_tarball="buildkite-agent-${VERSION}.tar.gz"
 
+    set -x
     gsutil cp "gs://${CONFIG_BUCKET}/${config_tarball}" /root
 
-    pushd /
-
-    tar xvfz "/root/${config_tarball}"
+    tar -C / -xvf "/root/${config_tarball}"
 
     while IFS= read -r -d '' ciph
     do
-        base64 --decode -i "$ciph" | \
-            gcloud kms decrypt \
+        base64 --decode -i "$ciph" \
+        | gcloud kms decrypt \
             --keyring=buildkite \
             --key=bootstrap \
             --location=global \
@@ -145,7 +146,7 @@ function config {
     chmod 755 /etc/buildkite-agent/hooks/*
 
     chmod 440 /etc/gce/*
-    chgrp buildkite-builder /etc/gce/*
+    chgrp buildkite-agent /etc/gce/*
 
     chown -R root:root /etc/docker
     chmod 600 /etc/docker/daemon.json
@@ -154,13 +155,24 @@ function config {
     find /etc/systemd/system -type f -exec chmod 644 {} \;
     chmod 744 /etc/systemd/system/docker-volume-prune.sh
 
-    chown root:root /etc/sudoers.d/*
+    chown -R root:root /etc/sudoers.d
     chmod 440 /etc/sudoers.d/*
 
-    popd
+    set +x
 }
 
-function users_groups {
+docker_gcr_auth() {
+    set -x
+    sudo -u buildkite-agent gcloud auth configure-docker --quiet
+    sudo -u buildkite-agent gcloud auth activate-service-account \
+        buildkite-agent@opensourcecoin.iam.gserviceaccount.com \
+        --key-file=/etc/gce/cred.json \
+        --quiet
+    set +x
+}
+
+users_groups() {
+    set -x
     if ! getent passwd buildkite-agent > /dev/null
     then
         useradd --user-group --system buildkite-builder
@@ -184,6 +196,7 @@ function users_groups {
     else
         usermod -aG docker,buildkite-builder buildkite-agent
     fi
+    set +x
 }
 
 function services {
@@ -205,6 +218,7 @@ function services {
         units+=("buildkite-agent@${i}")
     done
 
+    set -x
     systemctl daemon-reload
 
     for unit in "${units[@]}"
@@ -214,6 +228,7 @@ function services {
             systemctl $cmd "$unit"
         done
     done
+    set +x
 }
 
 function metadata_concealment {
@@ -223,23 +238,55 @@ function metadata_concealment {
         "--protocol=tcp"
         "--jump=REJECT"
     )
+
+    set -x
     iptables -D DOCKER-USER "${rule[@]}" || true
     iptables -I DOCKER-USER 1 "${rule[@]}"
     netfilter-persistent save
+    set +x
 }
 
-function main {
+main() {
+    echo
+    echo 'Users & Groups'
+    echo
     users_groups
+
+    echo
+    echo 'Static Configuration'
+    echo
     config
 
+    echo
+    echo 'apt Setup'
+    echo
     apt_keys
     apt-get update
 
+    echo
+    echo 'Storage'
+    echo
     storage
+
+    echo
+    echo 'Extra apt Packages'
+    echo
     apt_packages
+
+    echo
+    echo 'Docker GCR Auth'
+    echo
+    docker_gcr_auth
+
+    echo
+    echo 'systemd Services'
+    echo
     services
 
+    echo
+    echo 'Metadata Concealment'
+    echo
     metadata_concealment
 }
 
-main
+main "$@"
