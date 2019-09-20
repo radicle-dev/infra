@@ -24,7 +24,8 @@ fi
 
 : "${DOCKER_IMAGE:=None}"
 
-if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/* ]]
+if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/*
+   || "${DOCKER_IMAGE}" != gcr.io/kaniko-project/executor* ]]
 then
     echo "Docker image ${DOCKER_IMAGE} not allowed"
     exit 1
@@ -81,6 +82,8 @@ fi
 uid="$(id -u buildkite-builder)"
 gid="$(id -g buildkite-builder)"
 
+IFS=$' \t\n' read -ra the_command <<<"${BUILDKITE_COMMAND//$'\n'/ }"
+
 set +e
 timeout \
     --kill-after="$((BUILD_TIMEOUT_MINUTES + 10))m" \
@@ -96,9 +99,10 @@ timeout \
         --runtime="${DOCKER_RUNTIME:-runc}" \
         "${volumes[@]}" \
         --workdir=/build \
+        --entrypoint='' \
         "${build_env[@]}" \
         "${DOCKER_IMAGE}"  \
-        /bin/sh -c "${BUILDKITE_COMMAND}"
+        "${the_command[@]}"
 
 if [[ $? == 124 ]]
 then
