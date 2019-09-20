@@ -2,6 +2,7 @@
 set -eou pipefail
 IFS=$'\n\t'
 
+# Run pipeline upload on the host
 if [[ "$BUILDKITE_COMMAND" == "buildkite-agent pipeline upload"* ]]
 then
     # strip known command prefix
@@ -22,10 +23,10 @@ then
     exit $?
 fi
 
+# Restrict docker images to vetted ones
 : "${DOCKER_IMAGE:=None}"
 
-if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/*
-   || "${DOCKER_IMAGE}" != gcr.io/kaniko-project/executor* ]]
+if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/* ]]
 then
     echo "Docker image ${DOCKER_IMAGE} not allowed"
     exit 1
@@ -82,19 +83,6 @@ fi
 uid="$(id -u buildkite-builder)"
 gid="$(id -g buildkite-builder)"
 
-IFS=$' \t\n' read -ra the_command <<<"${BUILDKITE_COMMAND//$'\n'/ }"
-
-# Ensure the container gets killed - it seems the pre-exit hook is not
-# guaranteed to run when a build gets cancelled by user interventaion
-function fin {
-    local errno=$?
-    docker kill "build-${BUILDKITE_BUILD_ID}" 2>/dev/null || true
-    docker rm   "build-${BUILDKITE_BUILD_ID}" 2>/dev/null || true
-    exit $errno
-}
-trap fin EXIT
-
-set +e
 timeout \
     --kill-after="$((BUILD_TIMEOUT_MINUTES + 10))m" \
     --signal=TERM \
@@ -112,12 +100,4 @@ timeout \
         --entrypoint='' \
         "${build_env[@]}" \
         "${DOCKER_IMAGE}"  \
-        "${the_command[@]}"
-
-if [[ $? == 124 ]]
-then
-    echo
-    echo "The job timed out after ${BUILD_TIMEOUT_MINUTES} minutes!"
-    echo
-fi
-exit $?
+        /bin/sh -e -c "${BUILDKITE_COMMAND}"

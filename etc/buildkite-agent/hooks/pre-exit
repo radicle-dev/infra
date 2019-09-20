@@ -3,5 +3,5 @@ set -eou pipefail
 
 declare -r container="build-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}"
 echo "Cleaning up container $container"
-docker kill "$container" || true
-docker rm   "$container" || true
+docker kill "$container" 2>/dev/null || true
+docker rm   "$container" 2>/dev/null || true
