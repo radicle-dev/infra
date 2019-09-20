@@ -92,7 +92,7 @@ function fin {
     docker rm   "build-${BUILDKITE_BUILD_ID}" 2>/dev/null || true
     exit $errno
 }
-trap fin ERR
+trap fin EXIT
 
 set +e
 timeout \
