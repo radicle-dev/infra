@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-declare -r container="build-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}"
-echo "Cleaning up container $container"
-docker kill "$container" 2>/dev/null || true
-docker rm   "$container" 2>/dev/null || true
+reap() {
+    local -r container="$1"
+    echo "Reaping container $container"
+    docker kill "$container" 2>/dev/null || true
+    docker rm   "$container" 2>/dev/null || true
+}
+
+for x in img build
+do
+    reap "${x}-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}"
+done

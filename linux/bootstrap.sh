@@ -5,7 +5,7 @@ declare -r VERSION="${__VERSION}"
 declare -ra STORAGE_DEVICES=("${__STORAGE_DEVICES}")
 declare -r CONFIG_BUCKET="${__CONFIG_BUCKET}"
 
-function apt_keys {
+apt_keys() {
     # FIXME:
     #   should use this b/c signature attacks. doesn't seem to replicate, tho
     #local keysrv=hkps://keys.openpgp.org
@@ -23,13 +23,13 @@ function apt_keys {
     set +x
 }
 
-function apt_install {
+apt_install() {
     set -x
     DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
     set +x
 }
 
-function apt_packages {
+apt_packages() {
     apt_install \
         buildkite-agent \
         ca-certificates \
@@ -47,7 +47,7 @@ function apt_packages {
         zockervols
 }
 
-function zfs_exists {
+zfs_exists() {
     local cmd="$1"
     local name="$2"
 
@@ -62,7 +62,7 @@ function zfs_exists {
     esac
 }
 
-function storage {
+storage() {
     apt_install --no-install-recommends zfs-dkms
     modprobe zfs
     apt_install zfsutils-linux
@@ -122,7 +122,7 @@ function storage {
     chmod 775 /mnt/builds
 }
 
-function config {
+config() {
     local config_tarball="buildkite-agent-${VERSION}.tar.gz"
 
     set -x
@@ -199,7 +199,7 @@ users_groups() {
     set +x
 }
 
-function services {
+services() {
     local units=(
         docker
         zockervols.socket
@@ -231,7 +231,7 @@ function services {
     set +x
 }
 
-function metadata_concealment {
+metadata_concealment() {
     local rule=(
         "--in-interface=docker0"
         "--destination=169.254.169.254"

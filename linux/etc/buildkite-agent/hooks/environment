@@ -16,7 +16,7 @@ docker volume create \
     --opt="exec=on" \
     "$master_cache_volume"
 
-if [[ "${BUILDKITE_REPO}" =~ (https|git)://github.com/oscoin/* ]]
+if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ]]
 then
     export DOCKER_RUNTIME=runc
 
@@ -48,8 +48,6 @@ then
         set +a
     fi
 
-    export SECRET_GOOGLE_APPLICATION_CREDENTIALS=/etc/gce/cred.json
-
     # "Trusted" builds may bump the timeout
     if [[ "${BUILDKITE_TIMEOUT}" != "false" ]]
     then
@@ -63,4 +61,4 @@ else
     export DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume},volume-opt=quota=1GiB,volume-opt=exec=on"
 fi
 
-export BUILD_TIMEOUT_MINUTES=$timeout_minutes
+export TIMEOUT_MINUTES=$timeout_minutes

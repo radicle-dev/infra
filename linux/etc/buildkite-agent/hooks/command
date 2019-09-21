@@ -24,9 +24,9 @@ then
 fi
 
 # Restrict docker images to vetted ones
-: "${DOCKER_IMAGE:=None}"
+: "${DOCKER_IMAGE:=}"
 
-if [[ "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/* ]]
+if [[ -n "${DOCKER_IMAGE}" && "${DOCKER_IMAGE}" != gcr.io/opensourcecoin/* ]]
 then
     echo "Docker image ${DOCKER_IMAGE} not allowed"
     exit 1
@@ -73,23 +73,91 @@ volumes=(
     "--mount=${DOCKER_CACHE_MOUNT}"
     "--mount=type=bind,src=${BUILDKITE_BUILD_CHECKOUT_PATH},dst=/build"
 )
-if [[ -n "$SECRET_GOOGLE_APPLICATION_CREDENTIALS" ]]
-then
-    volumes+=(
-        "--mount=type=bind,src=${SECRET_GOOGLE_APPLICATION_CREDENTIALS},dst=${SECRET_GOOGLE_APPLICATION_CREDENTIALS},readonly"
-    )
-fi
 
 uid="$(id -u buildkite-builder)"
 gid="$(id -g buildkite-builder)"
 
+# Pull or build docker image
+
+: "${DOCKER_FILE:=}"
+
+docker pull "${DOCKER_IMAGE}" || { [[ -n "${DOCKER_FILE}" ]] && {
+    declare img_cache img_context img_file img_cache_mount
+
+    # Shared cache per agent
+    img_cache="img_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
+    docker volume create \
+        --driver=zockervols \
+        --label=build_cache \
+        --opt='exec=on' \
+        --opt='setuid=on' \
+        --opt='quota=15GiB' \
+        "$img_cache"
+    # fix permissions (`img` relies on running as uid 1000)
+    docker run --rm \
+        --mount="type=volume,src=${img_cache},dst=/cache" \
+        alpine \
+        chmod 777 /cache
+
+    if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ]]
+    then
+        img_cache_mount="type=volume,src=${img_cache},dst=/cache"
+    else
+        # PRs get a transient cache volume
+        img_cache_mount="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${img_cache}"
+    fi
+
+    # Re-tag DOCKER_IMAGE with current commit
+    : "${DOCKER_IMAGE:=gcr.io/opensourcecoin/${BUILDKITE_PIPELINE_SLUG}-build}"
+    : "${DOCKER_IMAGE%%:*}"
+    : "${_%%@*}"
+    DOCKER_IMAGE="${_}:${BUILDKITE_COMMIT}"
+
+    img_context="$(dirname "$DOCKER_FILE")"
+    img_context="$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "$img_context")"
+    img_context="$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "${BUILDKITE_BUILD_CHECKOUT_PATH}/${img_context}")"
+    img_file="$(basename "$DOCKER_FILE")"
+
+    timeout \
+        --kill-after="$((TIMEOUT_MINUTES + 10))m" \
+        --signal=TERM \
+        --verbose \
+        "${TIMEOUT_MINUTES}m" \
+        docker run \
+            --rm \
+            --name "img-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}" \
+            --init \
+            --mount="type=bind,src=${img_context},dst=/build,readonly" \
+            --mount="$img_cache_mount" \
+            --security-opt='seccomp=unconfined' \
+            --security-opt='apparmor=unconfined' \
+            --security-opt='systempaths=unconfined' \
+            --cap-drop=ALL \
+            --cap-add=SETUID \
+            --cap-add=SETGID \
+            --workdir=/build \
+            'r.j3ss.co/img@sha256:e0a04568a21bc3086230ccbc70b441b7d57f4501967c3cbead38f0b02751fbca' \
+                build \
+                --file="$img_file" \
+                --tag "$DOCKER_IMAGE" \
+                --no-console \
+                --backend=native \
+                --state=/cache \
+                --output="type=docker,name=${DOCKER_IMAGE}" \
+                . \
+    | docker load
+
+    docker push "${DOCKER_IMAGE}"
+};}
+
 timeout \
-    --kill-after="$((BUILD_TIMEOUT_MINUTES + 10))m" \
+    --kill-after="$((TIMEOUT_MINUTES + 10))m" \
     --signal=TERM \
     --verbose \
-    "${BUILD_TIMEOUT_MINUTES}m" \
+    "${TIMEOUT_MINUTES}m" \
     docker run --tty --rm \
         --name="build-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}" \
+        --init \
         --read-only \
         --user="${uid}:${gid}" \
         --cap-drop=ALL \
