@@ -1,16 +1,17 @@
+env:
+  DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:612efe3e4a78cd82d0169538ab6bfea794afae0165a76e1bd287923f54807a31"
+  DOCKER_FILE: .docker/build/Dockerfile
+
 steps:
 - label: "Tests"
   command: "cargo test --all"
-  env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4bcb57139220585f9919ccab256b3aa80a90a93429e625fddcdcb2e4c6dddb69"
   agents:
     production: "true"
     platform: "linux"
 
 - label: "Package"
   command: ".buildkite/package.sh"
-  env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4bcb57139220585f9919ccab256b3aa80a90a93429e625fddcdcb2e4c6dddb69"
+  branches: "master"
   artifact_paths:
   - "target/debian/*.deb"
   agents:
