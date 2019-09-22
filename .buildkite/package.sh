@@ -11,7 +11,7 @@ then
     echo "Uploading ${deb} to bintray:"
     curl -sSf \
         -T "target/debian/${deb}"  \
-        -u"kalt:${BINTRAY_API_KEY}" \
+        -u"${BINTRAY_API_KEY}" \
         -H"X-Bintray-Debian-Distribution: buster" \
         -H"X-Bintray-Debian-Component: main" \
         -H"X-Bintray-Debian-Architecture: amd64" \
@@ -20,7 +20,7 @@ then
 
     echo "Publishing ${deb} on bintray:"
     curl -sSf -XPOST \
-        -u"kalt:${BINTRAY_API_KEY}" \
+        -u"${BINTRAY_API_KEY}" \
        "https://api.bintray.com/content/oscoin/zockervols/zockervols/${version}/publish"
     echo
 fi
