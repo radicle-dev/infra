@@ -17,7 +17,16 @@ docker volume create \
     --opt="exec=on" \
     "$master_cache_volume"
 
-if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ]]
+# [Note on CI and organizations]
+# If a new organization is created to which projects that need this CI
+# infrastructure are added, there may be spurious errors when building said
+# project's Docker image - these can be fixed by adding the organization's page
+# to the places where this comment has been left.
+
+# Don't forget to update this after new organizations are added/removed.
+# See [Note on CI and organizations].
+if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
+      "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ]]
 then
     export DOCKER_RUNTIME=runc
 

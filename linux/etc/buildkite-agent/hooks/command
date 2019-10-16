@@ -98,8 +98,10 @@ docker pull "${DOCKER_IMAGE}" || { [[ -n "${DOCKER_FILE}" ]] && {
         --mount="type=volume,src=${img_cache},dst=/cache" \
         alpine \
         chmod 777 /cache
-
-    if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ]]
+    # Don't forget to update this after new organizations are added/removed.
+    # See [Note on CI and organizations].
+    if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
+          "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ]]
     then
         img_cache_mount="type=volume,src=${img_cache},dst=/cache"
     else
