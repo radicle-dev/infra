@@ -4,7 +4,7 @@
         "zfs.fsname=tank/docker"
     ],
     "runtimes": {
-        "kata-runtime": {
+        "kata-containers": {
             "path": "/usr/bin/kata-runtime"
         }
     }
