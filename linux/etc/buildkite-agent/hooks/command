@@ -117,7 +117,7 @@ docker pull "${DOCKER_IMAGE}" || { [[ -n "${DOCKER_FILE}" ]] && {
 
     img_context="$(dirname "$DOCKER_FILE")"
     img_context="$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "$img_context")"
-    img_context="$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "${BUILDKITE_BUILD_CHECKOUT_PATH}/${img_context}")"
+    img_context="${BUILDKITE_BUILD_CHECKOUT_PATH}/$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "${BUILDKITE_BUILD_CHECKOUT_PATH}/${img_context}")"
     img_file="$(basename "$DOCKER_FILE")"
 
     timeout \
