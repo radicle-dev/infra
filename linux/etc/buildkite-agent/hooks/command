@@ -138,7 +138,7 @@ docker pull "${DOCKER_IMAGE}" || { [[ -n "${DOCKER_FILE}" ]] && {
             --cap-add=SETUID \
             --cap-add=SETGID \
             --workdir=/build \
-            'r.j3ss.co/img@sha256:e0a04568a21bc3086230ccbc70b441b7d57f4501967c3cbead38f0b02751fbca' \
+            'gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c' \
                 build \
                 --file="$img_file" \
                 --tag "$DOCKER_IMAGE" \
