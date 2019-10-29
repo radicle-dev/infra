@@ -153,7 +153,8 @@ config() {
 
     chown -R root:root /etc/systemd/system
     find /etc/systemd/system -type f -exec chmod 644 {} \;
-    chmod 744 /etc/systemd/system/docker-volume-prune.sh
+    chgrp buildkite-agent /etc/systemd/system/docker-volume-prune.sh
+    chmod 754 /etc/systemd/system/docker-volume-prune.sh
 
     chown -R root:root /etc/sudoers.d
     chmod 440 /etc/sudoers.d/*
