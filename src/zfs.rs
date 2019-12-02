@@ -22,6 +22,8 @@ use users::get_effective_uid;
 
 use crate::api::*;
 
+const VOL_NAME_REPLACEMENT_CHAR: char = '_';
+
 enum Cmd {
     Create { vol: String, opts: VolumeOptions },
     Destroy { vol: String },
@@ -625,7 +627,14 @@ fn as_pathbuf(stdout: Vec<u8>) -> Option<PathBuf> {
 }
 
 fn sanitize_vol(vol: &str) -> String {
-    vol.replace("/", "_")
+    vol.chars()
+        .map(|c| match c {
+            '/' => VOL_NAME_REPLACEMENT_CHAR,
+            '#' => VOL_NAME_REPLACEMENT_CHAR,
+            '@' => VOL_NAME_REPLACEMENT_CHAR,
+            _ => c,
+        })
+        .collect()
 }
 
 #[cfg(test)]
