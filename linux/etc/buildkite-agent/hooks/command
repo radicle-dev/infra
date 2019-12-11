@@ -37,7 +37,7 @@ fi
 # Subset of the environment populated by buildkite.
 #
 # This avoids multi-line variables, and is driven mainly by the needs of
-# codecov.io. More can be added on demand.
+# codecov.io. More can be added on demand. See also `build_args` below.
 build_env=(
     "--env=CI"
     "--env=BUILDKITE"
@@ -77,15 +77,21 @@ volumes=(
 uid="$(id -u buildkite-builder)"
 gid="$(id -g buildkite-builder)"
 
-# Pull or build docker image
-
-: "${DOCKER_FILE:=}"
-
-docker pull "${DOCKER_IMAGE}" || { [[ -n "${DOCKER_FILE}" ]] && {
-    declare img_cache img_context img_file img_cache_mount
+# Build and push docker image using `img`.
+#
+# The function uses the following arguments:
+#
+# * $1 is the tag of the image to push
+# * $2 path of the docker file to build relative to the repository root.
+# * $3 path to the build context relative to the repository root.
+#
+function build_docker_image() {
+    local -r image_tag="$1"
+    local -r docker_file="$2"
+    local -r image_context="$3"
 
     # Shared cache per agent
-    img_cache="img_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
+    declare -r img_cache="img_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
     docker volume create \
         --driver=zockervols \
         --label=build_cache \
@@ -93,32 +99,40 @@ docker pull "${DOCKER_IMAGE}" || { [[ -n "${DOCKER_FILE}" ]] && {
         --opt='setuid=on' \
         --opt='quota=15GiB' \
         "$img_cache"
+
     # fix permissions (`img` relies on running as uid 1000)
     docker run --rm \
         --mount="type=volume,src=${img_cache},dst=/cache" \
         alpine \
         chmod 777 /cache
+
+    # Build from other repos will not be able to change the shared
+    # image build cache, and receive an ephemeral cache volume snapshotted from
+    # the shared cache instead.
+    #
     # Don't forget to update this after new organizations are added/removed.
     # See [Note on CI and organizations].
-    if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
-          "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ]]
+    declare img_cache_mount
+    if [[ "${BUILDKITE_PULL_REQUEST_REPO}" == "" &&
+          ( "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
+            "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ) ]]
     then
         img_cache_mount="type=volume,src=${img_cache},dst=/cache"
     else
-        # PRs get a transient cache volume
         img_cache_mount="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${img_cache}"
     fi
 
-    # Re-tag DOCKER_IMAGE with current commit
-    : "${DOCKER_IMAGE:=gcr.io/opensourcecoin/${BUILDKITE_PIPELINE_SLUG}-build}"
-    : "${DOCKER_IMAGE%%:*}"
-    : "${_%%@*}"
-    DOCKER_IMAGE="${_}:${BUILDKITE_COMMIT}"
-
-    img_context="$(dirname "$DOCKER_FILE")"
-    img_context="$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "$img_context")"
-    img_context="${BUILDKITE_BUILD_CHECKOUT_PATH}/$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "${BUILDKITE_BUILD_CHECKOUT_PATH}/${img_context}")"
-    img_file="$(basename "$DOCKER_FILE")"
+    # See also `build_env` above.
+    build_args=(
+        "--build-arg=CI=$CI"
+        "--build-arg=BUILDKITE=$BUILDKITE"
+        "--build-arg=BUILDKITE_BRANCH=$BUILDKITE_BRANCH"
+        "--build-arg=BUILDKITE_BUILD_NUMBER=$BUILDKITE_BUILD_NUMBER"
+        "--build-arg=BUILDKITE_JOB_ID=$BUILDKITE_JOB_ID"
+        "--build-arg=BUILDKITE_BUILD_URL=$BUILDKITE_BUILD_URL"
+        "--build-arg=BUILDKITE_PROJECT_SLUG=$BUILDKITE_PROJECT_SLUG"
+        "--build-arg=BUILDKITE_COMMIT=$BUILDKITE_COMMIT"
+    )
 
     timeout \
         --kill-after="$((TIMEOUT_MINUTES + 10))m" \
@@ -129,7 +143,7 @@ docker pull "${DOCKER_IMAGE}" || { [[ -n "${DOCKER_FILE}" ]] && {
             --rm \
             --name "img-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}" \
             --init \
-            --mount="type=bind,src=${img_context},dst=/build,readonly" \
+            --mount="type=bind,src=${BUILDKITE_BUILD_CHECKOUT_PATH},dst=/build,readonly" \
             --mount="$img_cache_mount" \
             --security-opt='seccomp=unconfined' \
             --security-opt='apparmor=unconfined' \
@@ -140,17 +154,38 @@ docker pull "${DOCKER_IMAGE}" || { [[ -n "${DOCKER_FILE}" ]] && {
             --workdir=/build \
             'gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c' \
                 build \
-                --file="$img_file" \
-                --tag "$DOCKER_IMAGE" \
+                "${build_args[@]}" \
+                --file="$docker_file" \
+                --tag "$image_tag" \
                 --no-console \
                 --backend=native \
                 --state=/cache \
-                --output="type=docker,name=${DOCKER_IMAGE}" \
-                . \
+                --output="type=docker,name=${image_tag}" \
+                "$image_context" \
     | docker load
 
-    docker push "${DOCKER_IMAGE}"
-};}
+    docker push "${image_tag}"
+}
+
+
+# If the base image for the step does not exist we build it locally and
+# push it.
+if ! docker pull "${DOCKER_IMAGE}"
+then
+    if [[ -n ${DOCKER_FILE:-} ]]
+    then
+        # Re-tag DOCKER_IMAGE with current commit
+        : "${DOCKER_IMAGE:=gcr.io/opensourcecoin/${BUILDKITE_PIPELINE_SLUG}-build}"
+        : "${DOCKER_IMAGE%%:*}"
+        : "${_%%@*}"
+        DOCKER_IMAGE="${_}:${BUILDKITE_COMMIT}"
+
+        build_docker_image \
+            "$DOCKER_IMAGE" \
+            "$DOCKER_FILE" \
+            "$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "$(dirname "$DOCKER_FILE")")"
+    fi
+fi
 
 timeout \
     --kill-after="$((TIMEOUT_MINUTES + 10))m" \
@@ -171,3 +206,18 @@ timeout \
         "${build_env[@]}" \
         "${DOCKER_IMAGE}"  \
         /bin/sh -e -c "${BUILDKITE_COMMAND}"
+
+# If the step was to prepare a docker image build, run it now
+if [[ -n "${STEP_DOCKER_FILE}" ]]
+then
+    if [[ -z "${STEP_DOCKER_IMAGE}" ]]
+    then
+        echo "STEP_DOCKER_IMAGE variable is not set. Not building the docker image"
+        exit 1
+    fi
+
+    build_docker_image \
+        "${STEP_DOCKER_IMAGE}:${BUILDKITE_COMMIT}" \
+        "${STEP_DOCKER_FILE}" \
+        "${STEP_DOCKER_CONTEXT:-$(dirname "$STEP_DOCKER_FILE")}"
+fi

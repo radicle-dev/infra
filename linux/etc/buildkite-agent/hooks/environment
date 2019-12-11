@@ -18,15 +18,21 @@ docker volume create \
     "$master_cache_volume"
 
 # [Note on CI and organizations]
-# If a new organization is created to which projects that need this CI
-# infrastructure are added, there may be spurious errors when building said
-# project's Docker image - these can be fixed by adding the organization's page
-# to the places where this comment has been left.
+# We consider builds from certain GitHub organizations "trusted", which means
+# they can have access to shared caches, use encrypted secrets, have less strict
+# process isolation, and potentially other things. To detect this, below
+# conditional needs to be evaluated: the `BUILDKITE_PULL_REQUEST_REPO` variable
+# must be set to the empty string, and the URL `BUILDKITE_REPO` must match a
+# pattern including the GH organization names.
+#
+# This check may be necessary in a few different places. When making it, insert
+# a reference to this note as done below.
 
 # Don't forget to update this after new organizations are added/removed.
 # See [Note on CI and organizations].
-if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
-      "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ]]
+if [[ "${BUILDKITE_PULL_REQUEST_REPO}" == "" &&
+      ( "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
+        "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ) ]]
 then
     export DOCKER_RUNTIME=runc
 
