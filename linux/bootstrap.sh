@@ -12,7 +12,7 @@ apt_keys() {
     local keysrv=hkps://keyserver.ubuntu.com
     local keys=(
         9DC858229FC7DD38854AE2D88D81803C0EBFCD88 # Docker
-        8756C4F765C9AC3CB6B85D62379CE192D401AB61 # Bintray (zockervols)
+        8756C4F765C9AC3CB6B85D62379CE192D401AB61 # Bintray (zockervols, sops)
         32A37959C2FA5C3C99EFBC32A79206696452D198 # Buildkite
         9FDC0CB63708CF803696E2DCD0B37B826063F3ED # SuSE (kata containers)
         54A647F9048D5688D7DA2ABE6A030B21BA07F4FB # Google (gce sdk)
@@ -44,6 +44,7 @@ apt_packages() {
         kata-runtime \
         kata-shim \
         jq \
+        sops \
         zockervols
 }
 
