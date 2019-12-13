@@ -15,34 +15,53 @@ The cache volume has a quota of 8GiB. This value can be configured through
 
 ## Building docker images
 
-You can build and push docker images as part of a job by adding setting the
-`BUILD_DOCKER_IMAGE` environment variable to `true`.
+Linux builds run inside docker containers. The image to use for the build step
+is specified via the `DOCKER_IMAGE` environment variable of the step. The image
+may also be built on the build agent itself, before executing the build step. To
+do this, specify an environment variable `DOCKER_FILE` which points to a
+`Dockerfile` relative to the repository root.
+
+Note that `DOCKER_IMAGE` takes precedence over `DOCKER_FILE` -- if `docker pull
+$DOCKER_IMAGE` succeeds, no new image is built.
+
+Only `DOCKER_IMAGE`s from the `gcr.io/opensourcecoin` repository are permitted.
+Images built by the agent are pushed to `gcr.io/opensourcecoin/${BUILDKITE_PIPELINE_SLUG}-build:${BUILDKITE_COMMIT}`
+if no `DOCKER_IMAGE` is given, and to `${DOCKER_IMAGE}:${BUILDKITE_COMMIT}`
+otherwise.
+
+```yaml
+steps:
+- command: cargo test
+  env:
+    DOCKER_FILE: docker/build-image/Dockerfile
+    # After the image was built successfully, save build minutes by pinning it
+    # to its SHA256 hash:
+    # DOCKER_IMAGE: gcr.io/opensourcecoin/my-project-build@sha256:51ec4db1da1870e753610209880f3ff1759ba54149493cf3118b47a84edbc75b
+```
+
+It is also possible to define build steps which build and push docker images. To
+do so, define `STEP_DOCKER_FILE` and `STEP_DOCKER_IMAGE`:
 
 ```yaml
 steps:
 - command: |-
     echo "hello world" > ./my_artifact
     mkdir image-build
+    mv my_artifact image-build
     echo "FROM alpine" >> ./image-build/Dockerfile
     echo "ADD ./my_artifact ." >> ./image-build/Dockerfile
   env:
-    BUILD_DOCKER_IMAGE: true
-    BUILD_DOCKER_IMAGE_NAME: gcr.io/opensourcecoin/my-project
+    STEP_DOCKER_FILE: image-build/Dockerfile
+    STEP_DOCKER_IMAGE: gcr.io/opensourcecoin/my-project
 ```
 
-If building docker image is enabled the job command can create
-`./image-build/Dockerfile` with the image build instructions. When the job
-command has finished the agent will use this Docker file and the working
-directory of the job as the context. This means that all artifacts created by
-the job command can be added to the image.
+The step in this example creates a build artifact to be packaged in the docker
+image, and dynamically assembles the `Dockerfile`. `img` sees only the directory
+where the `Dockerfile` lives, so make sure all the artifacts are copied there.
 
-The built image is tagged with the name given by `BUILD_DOCKER_IMAGE_NAME` and
-the git commit hash `BUILDKITE_COMMIT` as the tag. The agent pushes the
-image to the registry.
-
-Building images is only available to the `oscoin` and `radicle-dev` Github
-organizations. The image name is restricted to starting with
-`gcr.io/opensourcecoin`.
+The built image is tagged with the name given by `STEP_DOCKER_IMAGE` and the git
+commit hash `BUILDKITE_COMMIT` as the tag. The agent pushes the image to a
+registry deduced from `DOCKER_IMAGE`.
 
 When building most of the [Buildkite environment variables][buildkite-env] are
 available as [build arguments][docker-build-args].

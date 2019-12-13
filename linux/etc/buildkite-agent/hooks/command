@@ -79,13 +79,17 @@ gid="$(id -g buildkite-builder)"
 
 # Build and push docker image using `img`.
 #
-# The function uses the following variables
-# * 'image_tag' is the tag of the image to push
-# * 'docker_file' path of the docker file to build relative to the
-#   repository root.
-# * 'image_context' path to the build context relative to the
-#   repository root.
+# The function uses the following arguments:
+#
+# * $1 is the tag of the image to push
+# * $2 path of the docker file to build relative to the repository root.
+# * $3 path to the build context relative to the repository root.
+#
 function build_docker_image() {
+    local -r image_tag="$1"
+    local -r docker_file="$2"
+    local -r image_context="$3"
+
     # Shared cache per agent
     declare -r img_cache="img_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
     docker volume create \
@@ -103,13 +107,15 @@ function build_docker_image() {
         chmod 777 /cache
 
     # Build from other repos will not be able to change the shared
-    # image build cache.
+    # image build cache, and receive an ephemeral cache volume snapshotted from
+    # the shared cache instead.
     #
     # Don't forget to update this after new organizations are added/removed.
     # See [Note on CI and organizations].
     declare img_cache_mount
-    if [[ "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
-          "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ]]
+    if [[ "${BUILDKITE_PULL_REQUEST_REPO}" == "" &&
+          ( "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
+            "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ) ]]
     then
         img_cache_mount="type=volume,src=${img_cache},dst=/cache"
     else
@@ -137,7 +143,7 @@ function build_docker_image() {
             --rm \
             --name "img-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}" \
             --init \
-            --mount="type=bind,src=${BUILDKITE_BUILD_CHECKOUT_PATH},dst=/build,readonly" \
+            --mount="type=bind,src=${img_context},dst=/build,readonly" \
             --mount="$img_cache_mount" \
             --security-opt='seccomp=unconfined' \
             --security-opt='apparmor=unconfined' \
@@ -164,20 +170,21 @@ function build_docker_image() {
 
 # If the base image for the step does not exist we build it locally and
 # push it.
-if ! docker pull "${DOCKER_IMAGE}"; then
-  if [[ -n ${DOCKER_FILE:-} ]]; then
-    # Re-tag DOCKER_IMAGE with current commit
-    : "${DOCKER_IMAGE:=gcr.io/opensourcecoin/${BUILDKITE_PIPELINE_SLUG}-build}"
-    : "${DOCKER_IMAGE%%:*}"
-    : "${_%%@*}"
-    DOCKER_IMAGE="${_}:${BUILDKITE_COMMIT}"
-    declare -r image_tag="${BUILD_DOCKER_IMAGE_NAME}:${BUILDKITE_COMMIT}"
-    declare -r docker_file="$DOCKER_FILE"
-    # Context path is the directory of the docker file
-    declare image_context
-    image_context="$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "$(dirname "$DOCKER_FILE")")"
-    build_docker_image
-  fi
+if ! docker pull "${DOCKER_IMAGE}"
+then
+    if [[ -n ${DOCKER_FILE:-} ]]
+    then
+        # Re-tag DOCKER_IMAGE with current commit
+        : "${DOCKER_IMAGE:=gcr.io/opensourcecoin/${BUILDKITE_PIPELINE_SLUG}-build}"
+        : "${DOCKER_IMAGE%%:*}"
+        : "${_%%@*}"
+        DOCKER_IMAGE="${_}:${BUILDKITE_COMMIT}"
+
+        build_docker_image \
+            "$DOCKER_IMAGE" \
+            "$DOCKER_FILE" \
+            "$(realpath --relative-base="$BUILDKITE_BUILD_CHECKOUT_PATH" "$(dirname "$DOCKER_FILE")")"
+    fi
 fi
 
 timeout \
@@ -200,18 +207,17 @@ timeout \
         "${DOCKER_IMAGE}"  \
         /bin/sh -e -c "${BUILDKITE_COMMAND}"
 
-if [[ "${BUILD_DOCKER_IMAGE:-}" = "true" ]]; then
-  if [[ -z "${BUILD_DOCKER_IMAGE_NAME}" ]]; then
-    echo "BUILD_DOCKER_IMAGE_NAME variable is not set. Not building the docker image"
-    exit 1
-  fi
+# If the step was to prepare a docker image build, run it now
+if [[ -n "${STEP_DOCKER_FILE}" ]]
+then
+    if [[ -z "${STEP_DOCKER_IMAGE}" ]]
+    then
+        echo "STEP_DOCKER_IMAGE variable is not set. Not building the docker image"
+        exit 1
+    fi
 
-  if [[ "${BUILD_DOCKER_IMAGE_NAME}" != gcr.io/opensourcecoin/* ]]; then
-    echo "Invalid BUILD_DOCKER_IMAGE_NAME. Value must start with 'gcr.io/opensourcecoin/'"
-  fi
-
-  image_tag="${BUILD_DOCKER_IMAGE_NAME}:${BUILDKITE_COMMIT}" \
-  docker_file="./img-build/Dockerfile" \
-  image_context="./"
-  build_docker_image
+    build_docker_image \
+        "${STEP_DOCKER_IMAGE}:${BUILDKITE_COMMIT}" \
+        "${STEP_DOCKER_FILE}" \
+        "$(dirname "$STEP_DOCKER_FILE")"
 fi
