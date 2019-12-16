@@ -143,7 +143,7 @@ function build_docker_image() {
             --rm \
             --name "img-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}" \
             --init \
-            --mount="type=bind,src=${img_context},dst=/build,readonly" \
+            --mount="type=bind,src=${BUILDKITE_BUILD_CHECKOUT_PATH},dst=/build,readonly" \
             --mount="$img_cache_mount" \
             --security-opt='seccomp=unconfined' \
             --security-opt='apparmor=unconfined' \
