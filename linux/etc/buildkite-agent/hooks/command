@@ -219,5 +219,5 @@ then
     build_docker_image \
         "${STEP_DOCKER_IMAGE}:${BUILDKITE_COMMIT}" \
         "${STEP_DOCKER_FILE}" \
-        "$(dirname "$STEP_DOCKER_FILE")"
+        "${STEP_DOCKER_CONTEXT:-$(dirname "$STEP_DOCKER_FILE")}"
 fi

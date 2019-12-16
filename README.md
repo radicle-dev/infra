@@ -56,8 +56,10 @@ steps:
 ```
 
 The step in this example creates a build artifact to be packaged in the docker
-image, and dynamically assembles the `Dockerfile`. `img` sees only the directory
-where the `Dockerfile` lives, so make sure all the artifacts are copied there.
+image, and dynamically assembles the `Dockerfile`. `img` uses the directory of
+the `Dockerfile` as its context, i.e. you can only `ADD` files from there. It is
+also possible to override the context by defining the `STEP_DOCKER_CONTEXT` env
+variable.
 
 The built image is tagged with the name given by `STEP_DOCKER_IMAGE` and the git
 commit hash `BUILDKITE_COMMIT` as the tag. The agent pushes the image to a
