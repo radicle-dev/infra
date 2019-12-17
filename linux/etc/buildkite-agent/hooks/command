@@ -110,12 +110,10 @@ function build_docker_image() {
     # image build cache, and receive an ephemeral cache volume snapshotted from
     # the shared cache instead.
     #
-    # Don't forget to update this after new organizations are added/removed.
     # See [Note on CI and organizations].
     declare img_cache_mount
-    if [[ "${BUILDKITE_PULL_REQUEST_REPO}" == "" &&
-          ( "${BUILDKITE_REPO}" == https://github.com/oscoin/* ||
-            "${BUILDKITE_REPO}" == https://github.com/radicle-dev/* ) ]]
+    if [[ "${BUILDKITE_PULL_REQUEST_REPO}" == "" ||
+          "${BUILDKITE_PULL_REQUEST_REPO}" =~ $TRUSTED_UPSTREAMS_REGEX ]]
     then
         img_cache_mount="type=volume,src=${img_cache},dst=/cache"
     else
