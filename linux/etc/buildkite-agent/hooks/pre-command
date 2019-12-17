@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-cd "${BUILDKITE_BUILD_CHECKOUT_PATH}"
+pushd "${BUILDKITE_BUILD_CHECKOUT_PATH}"
 
 if [[ -r .buildkite/secrets.yaml ]]
 then
