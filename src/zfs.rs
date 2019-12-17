@@ -16,13 +16,12 @@ use chashmap::CHashMap;
 use chrono::prelude::*;
 use chrono::serde::ts_seconds;
 use itertools::Itertools;
+use regex::Regex;
 use serde::Deserialize;
 #[cfg(target_os = "linux")]
 use users::get_effective_uid;
 
 use crate::api::*;
-
-const VOL_NAME_REPLACEMENT_CHAR: char = '_';
 
 enum Cmd {
     Create { vol: String, opts: VolumeOptions },
@@ -627,14 +626,10 @@ fn as_pathbuf(stdout: Vec<u8>) -> Option<PathBuf> {
 }
 
 fn sanitize_vol(vol: &str) -> String {
-    vol.chars()
-        .map(|c| match c {
-            '/' => VOL_NAME_REPLACEMENT_CHAR,
-            '#' => VOL_NAME_REPLACEMENT_CHAR,
-            '@' => VOL_NAME_REPLACEMENT_CHAR,
-            _ => c,
-        })
-        .collect()
+    lazy_static! {
+        static ref RE: Regex = Regex::new("[^-_a-zA-Z0-9]").unwrap();
+    }
+    RE.replace_all(vol, "_").to_string()
 }
 
 #[cfg(test)]
@@ -660,5 +655,21 @@ mod tests {
                 avail: 262045696,
             }
         )
+    }
+
+    #[test]
+    fn test_sanitize_vol_noop() {
+        let sane = vec!["foo", "foo_bar", "asd123-42", "-----"];
+        for s in sane {
+            assert_eq!(sanitize_vol(s), s)
+        }
+    }
+
+    #[test]
+    fn test_sanitize_vol_pathological() {
+        assert_eq!(sanitize_vol("leboeuf:#42-fix-shit"), "leboeuf__42-fix-shit");
+        assert_eq!(sanitize_vol("rename-libstd++11"), "rename-libstd__11");
+        assert_eq!(sanitize_vol("ƒoo"), "_oo");
+        assert_eq!(sanitize_vol("🗻∈🌏"), "___");
     }
 }
