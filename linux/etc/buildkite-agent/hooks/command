@@ -49,6 +49,8 @@ build_env=(
     "--env=BUILDKITE_COMMIT"
 )
 
+declare -r img_image="gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c"
+
 # Pipeline variables
 #
 # Using the `env` attribute in a pipeline yaml requires prefixing the variable
@@ -134,6 +136,8 @@ function build_docker_image() {
         "--build-arg=BUILDKITE_COMMIT=$BUILDKITE_COMMIT"
     )
 
+
+    docker pull --quiet "$img_image"
     timeout \
         --kill-after="$((TIMEOUT_MINUTES + 10))m" \
         --signal=TERM \
@@ -152,7 +156,7 @@ function build_docker_image() {
             --cap-add=SETUID \
             --cap-add=SETGID \
             --workdir=/build \
-            'gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c' \
+            "$img_image"
                 build \
                 "${build_args[@]}" \
                 --file="$docker_file" \
@@ -162,9 +166,10 @@ function build_docker_image() {
                 --state=/cache \
                 --output="type=docker,name=${image_tag}" \
                 "$image_context" \
-    | docker load
+    | docker load --quiet
 
     docker push "${image_tag}"
+    echo "Succesfully pushed ${image_tag}"
 }
 
 
@@ -212,9 +217,12 @@ if [[ -n "${STEP_DOCKER_FILE}" ]]
 then
     if [[ -z "${STEP_DOCKER_IMAGE}" ]]
     then
+        echo "--- Build container image artifact"
         echo "STEP_DOCKER_IMAGE variable is not set. Not building the docker image"
         exit 1
     fi
+
+    echo "--- Build container image artifact"
 
     build_docker_image \
         "${STEP_DOCKER_IMAGE}:${BUILDKITE_COMMIT}" \
