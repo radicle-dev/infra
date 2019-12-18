@@ -211,19 +211,17 @@ timeout \
         /bin/sh -e -c "${BUILDKITE_COMMAND}"
 
 # If the step was to prepare a docker image build, run it now
-if [[ -n "${STEP_DOCKER_FILE}" ]]
+if [[ -n ${STEP_DOCKER_FILE:-} ]]
 then
-    if [[ -z "${STEP_DOCKER_IMAGE}" ]]
+    if [[ -n ${STEP_DOCKER_IMAGE:-} ]]
     then
         echo "--- Build container image artifact"
+        build_docker_image \
+            "${STEP_DOCKER_IMAGE}:${BUILDKITE_COMMIT}" \
+            "${STEP_DOCKER_FILE}" \
+            "${STEP_DOCKER_CONTEXT:-$(dirname "$STEP_DOCKER_FILE")}"
+    else
         echo "STEP_DOCKER_IMAGE variable is not set. Not building the docker image"
         exit 1
     fi
-
-    echo "--- Build container image artifact"
-
-    build_docker_image \
-        "${STEP_DOCKER_IMAGE}:${BUILDKITE_COMMIT}" \
-        "${STEP_DOCKER_FILE}" \
-        "${STEP_DOCKER_CONTEXT:-$(dirname "$STEP_DOCKER_FILE")}"
 fi
