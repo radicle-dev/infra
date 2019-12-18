@@ -28,7 +28,7 @@ docker volume create \
 # This check may be necessary in a few different places. When making it, insert
 # a reference to this note as done below.
 
-declare -re TRUSTED_UPSTREAMS_REGEX="(https|git)://github.com/(oscoin|radicle-dev)/*"
+declare -rx TRUSTED_UPSTREAMS_REGEX="(https|git)://github.com/(oscoin|radicle-dev)/*"
 
 # See [Note on CI and organizations].
 if [[ "${BUILDKITE_REPO}" =~ $TRUSTED_UPSTREAMS_REGEX ]]
