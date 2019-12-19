@@ -154,7 +154,7 @@ function build_docker_image() {
             --cap-add=SETUID \
             --cap-add=SETGID \
             --workdir=/build \
-            "$img_image"
+            "$img_image" \
                 build \
                 "${build_args[@]}" \
                 --file="$docker_file" \
