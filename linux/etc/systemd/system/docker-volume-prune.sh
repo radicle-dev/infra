@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-yesterday="$(date --utc --date='yesterday' +'%Y-%m-%dT00:00:00Z')"
+expiration_date="$(date --utc --date='1 week ago' +'%Y-%m-%dT00:00:00Z')"
 
 mapfile -t prune < <(
     docker volume ls --filter=label=build_cache --format='{{ .Name }}' \
     | xargs --no-run-if-empty docker volume inspect \
-    | jq -rM --arg date "$yesterday" \
+    | jq -rM --arg date "$expiration_date" \
         '. | map(select(.Mountpoint == "none")) | map(select(.CreatedAt < $date)) | map(.Name) | .[]'
 )
 
