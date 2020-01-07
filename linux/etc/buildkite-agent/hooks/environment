@@ -10,12 +10,26 @@ declare -ri CACHE_QUOTA_GiB=8
 declare -r cache_volume_prefix="cache_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
 declare -r master_cache_volume="${cache_volume_prefix}_${BUILDKITE_PIPELINE_DEFAULT_BRANCH}"
 
+uid="$(id -u buildkite-builder)"
+gid="$(id -g buildkite-builder)"
+
+
+# Takes a volume ID and changes the owner of the volume root to the
+# buildkite user.
+function volume-chown-runner() {
+  docker run --rm \
+      --mount="type=volume,src=$1,dst=/cache" \
+      alpine \
+      chown "$uid:$gid" /cache
+}
+
 # Create volume for master branch, if not exists
 docker volume create \
     --driver=zockervols \
     --opt="quota=${CACHE_QUOTA_GiB}GiB" \
     --opt="exec=on" \
     "$master_cache_volume"
+volume-chown-runner "$master_cache_volume"
 
 # [Note on CI and organizations]
 # We consider builds from certain GitHub organizations "trusted", which means
@@ -52,6 +66,7 @@ then
                 --opt="quota=${CACHE_QUOTA_GiB}GiB" \
                 --opt="exec=on" \
                 "$branch_cache_volume"
+            volume-chown-runner "$branch_cache_volume"
             export DOCKER_CACHE_MOUNT="type=volume,src=${branch_cache_volume},dst=/cache,volume-driver=zockervols"
         fi
 
