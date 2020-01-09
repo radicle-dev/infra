@@ -8,7 +8,13 @@ declare -i timeout_minutes=$MIN_TIMEOUT_MINUTES
 
 declare -ri CACHE_QUOTA_GiB=8
 declare -r cache_volume_prefix="cache_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
-declare -r master_cache_volume="${cache_volume_prefix}_${BUILDKITE_PIPELINE_DEFAULT_BRANCH}"
+
+if [[ "${SHARED_MASTER_CACHE:-}" = "true" ]]; then
+  declare -r master_cache_volume="${cache_volume_prefix}_${BUILDKITE_PIPELINE_DEFAULT_BRANCH}"
+else
+  declare -r shared_cache_volume_prefix="cache_shared_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
+  declare -r master_cache_volume="${shared_cache_volume_prefix}_${BUILDKITE_PIPELINE_DEFAULT_BRANCH}"
+fi
 
 # Create volume for master branch, if not exists
 docker volume create \

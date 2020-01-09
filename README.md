@@ -3,15 +3,36 @@ CI infrastructure
 
 ## Caching
 
-Each job container has a cache volume mounted at `/cache`. The cache volume is
-shared between jobs for the same branch on the same runner. This means that jobs
-on different runners or branches cannot share the cache.
+Each job container has a cache volume mounted at `/cache`. In general, the cache
+volume is shared only between jobs for the same branch on the same runner. This
+means that jobs on different runners or branches cannot share the cache. This
+can be adjusted with the shared master cache (see below).
 
 For branch builds the cache volume is created from a snapshot of the cache
 volume of the master branch of the runner.
 
 The cache volume has a quota of 8GiB. This value can be configured through
 `CACHE_QUOTA_GiB` in `./linux/etc/buildkite-agent/hooks/command`.
+
+### Shared master cache
+
+It is possible to configure a pipeline so that runners on the same machine share
+the build cache of the builds of the default branch. This behavior is controlled
+via the `SHARED_MASTER_CACHE` environment variable.
+
+```yaml
+steps:
+- command: "tests.sh"
+  branches: "!master"
+- command: "tests.sh"
+  concurrency: 1
+  branches: "master"
+  env:
+    SHARED_MASTER_CACHE: true
+```
+
+To ensure that two runners don’t access the cache concurrently the concurrency
+must be limited.
 
 ## Building docker images
 
