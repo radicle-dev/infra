@@ -90,7 +90,7 @@ where
         .recover(error_response);
 
     let capabilities = warp::path(CAPABILITIES)
-        .and(handler.clone())
+        .and(handler)
         .map(|h: H| warp::reply::json(&h.capabilities()));
 
     let routes = warp::post2().and(
