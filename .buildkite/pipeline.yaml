@@ -1,0 +1,25 @@
+steps:
+- label: "Build & Test `buildkite-hooks`"
+  commands:
+  - "cd buildkite-hooks"
+  - "cargo test --all"
+  agents:
+    production: "true"
+    platform: "linux"
+  branches: "!master"
+  env:
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/buildkite-hooks-build"
+    DOCKER_FILE: .docker/rust/Dockerfile
+
+
+- label: "Build & Package `buildkite-hooks`"
+  command: ".buildkite/package.sh"
+  artifact_paths:
+  - "target/debian/*.deb"
+  agents:
+    production: "true"
+    platform: "linux"
+  branches: "master"
+  env:
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/buildkite-hooks-build"
+    DOCKER_FILE: .docker/rust/Dockerfile

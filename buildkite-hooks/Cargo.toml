@@ -5,6 +5,7 @@ authors = ["Kim Altintop <kim@monadic.xyz>", "Monadic GmbH <team@monadic.xyz>"]
 edition = "2018"
 
 [dependencies]
+env_logger = "0.7"
 failure = { version = "0.1", features = ["backtrace"] }
 failure_derive = "0.1"
 libc = "0.2"
@@ -13,3 +14,16 @@ paw = "1.0"
 signal-hook = "0.1"
 structopt = { version = "0.3", features = ["paw"] }
 url = "2.1"
+
+[package.metadata.deb]
+maintainer = "Monadic GmbH <team@monadic.xyz>"
+copyright = "2020 Kim Altintop, Monadic GmbH"
+depends = "$auto, docker-ce"
+priority = "optional"
+maintainer-scripts = ".debian"
+assets = [
+    ["scripts/buildkite-hook-wrapper", "usr/local/bin/", "755"],
+    ["target/release/buildkite-command-hook", "var/lib/buildkite-hooks/bin/", "755"],
+    ["target/release/buildkite-pre-checkout-hook", "var/lib/buildkite-hooks/bin/", "755"],
+    ["target/release/buildkite-pre-exit-hook", "var/lib/buildkite-hooks/bin/", "755"],
+]

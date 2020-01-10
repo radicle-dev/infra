@@ -87,6 +87,8 @@ struct VolumeMounts {
 
 #[paw::main]
 fn main(cfg: Config) -> Result<(), Error> {
+    env_logger::init();
+
     let cfg = cfg.valid();
 
     let docker = Docker::new();

@@ -7,8 +7,9 @@ use buildkite_hooks::container::docker::*;
 
 #[paw::main]
 fn main(config: Config) -> Result<(), io::Error> {
-    let config = config.valid();
+    env_logger::init();
+
     Docker::new()
-        .reap_containers(&config.command_id())
+        .reap_containers(&config.valid().command_id())
         .map(|_| ())
 }

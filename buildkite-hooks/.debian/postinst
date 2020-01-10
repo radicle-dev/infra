@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+ln -sf /usr/local/bin/buildkite-command-hook /usr/local/bin/buildkite-command-wrapper
+ln -sf /usr/local/bin/buildkite-pre-checkout-hook /usr/local/bin/buildkite-command-wrapper
+ln -sf /usr/local/bin/buildkite-pre-exit-hook /usr/local/bin/buildkite-command-wrapper

@@ -26,6 +26,8 @@ impl From<io::Error> for Error {
 }
 
 fn main() -> Result<(), Error> {
+    env_logger::init();
+
     let checkout_path =
         env::var_os("BUILDKITE_BUILD_CHECKOUT_PATH").ok_or(env::VarError::NotPresent)?;
 
