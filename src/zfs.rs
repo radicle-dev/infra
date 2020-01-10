@@ -18,8 +18,9 @@ use chrono::serde::ts_seconds;
 use itertools::Itertools;
 use regex::Regex;
 use serde::Deserialize;
-#[cfg(target_os = "linux")]
-use users::{get_effective_gid, get_effective_uid};
+use users::{
+    get_effective_gid, get_effective_groupname, get_effective_uid, get_effective_username,
+};
 
 use crate::api::*;
 
@@ -170,7 +171,17 @@ impl Cmd {
 
                 Command::new("sudo")
                     .arg("chown")
-                    .arg(format!("{}:{}", get_effective_uid(), get_effective_gid()))
+                    .arg({
+                        // Try hard to use username:groupname instead of uid:gid
+                        let mut user = get_effective_username()
+                            .unwrap_or_else(|| get_effective_uid().to_string().into());
+                        let group = get_effective_groupname()
+                            .unwrap_or_else(|| get_effective_gid().to_string().into());
+
+                        user.push(":");
+                        user.push(group);
+                        user
+                    })
                     .arg(&mountpoint)
                     .run()?;
 
