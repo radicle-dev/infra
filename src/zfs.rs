@@ -19,7 +19,7 @@ use itertools::Itertools;
 use regex::Regex;
 use serde::Deserialize;
 #[cfg(target_os = "linux")]
-use users::get_effective_uid;
+use users::{get_effective_gid, get_effective_uid};
 
 use crate::api::*;
 
@@ -99,8 +99,8 @@ impl Cmd {
                                     .arg(snap.to_owned())
                                     .arg(root.join(vol))
                             })
-                            .or_else(|e| ignore_already_exists(e).and(Ok(Vec::new())))
-                            .or_else(|e| ignore_mount_error(e).and(Ok(Vec::new())))?;
+                            .or_else(|e| ignore_already_exists(e).and(Ok(vec![])))
+                            .or_else(|e| ignore_mount_error(e).and(Ok(vec![])))?;
                         // finally, mark the snapshot for deletion
                         ZfsCmd::User.run(|zfs| zfs.arg("destroy").arg("-d").arg(&snap))
                     }
@@ -111,7 +111,7 @@ impl Cmd {
                                 .args(&["-o", "mountpoint=none"])
                                 .arg(root.join(vol))
                         })
-                        .or_else(|e| ignore_mount_error(e).map(|_| Vec::new())),
+                        .or_else(|e| ignore_mount_error(e).map(|_| vec![])),
                 }
             }
 
@@ -132,31 +132,66 @@ impl Cmd {
                     })?;
                 let mountpoint = root_mountpoint.join(vol);
 
-                // create mountpoint and adjust permissions
-                fs::create_dir(&mountpoint)?;
-                fs::set_permissions(&mountpoint, fs::Permissions::from_mode(0o750))?;
-
+                // ZoL can't delegate mount privileges, so we need to run this
+                // as root.
+                //
+                // There's a catch:
+                //
+                // The ownership/permissions of the mountpoint is also what
+                // docker sees. For unprivileged containers to be able to write
+                // to the volume, we run them under the same unprivileged user
+                // as zockervols, and make it so the ownership matches.
+                //
+                // Now, if the mountpoint doesn't exist, zfs creates it for us,
+                // and leaves it in place after unmounting -- however, it will
+                // be owned by root, since we used sudo. Once would assume that,
+                // if we just create the mountpoint beforehand, and change the
+                // ownership accordingly, it would Just Work.
+                //
+                // Hah!
+                //
+                // It sometimes works, and sometimes doesn't. What's more
+                // bizarre is that the ownership may get reset to root when
+                // mounted (effectively an overlay mount), or it may get reset
+                // to root on the mountpoint that's left in place, while zfs
+                // remembers the ownership when mounting. Or it may get reset to
+                // root in both cases. Once the ownership is set on a mounted
+                // volume, however, zfs seems to remember that, even if we
+                // remove the mountpoint.
+                //
+                // So be it: we just adjust ownership and permissions on the
+                // mounted volume every time.
+                //
                 ZfsCmd::Sudo.run(|zfs| {
                     zfs.arg("set")
                         .arg(format!("mountpoint={}", mountpoint.to_str().unwrap()))
                         .arg(root.join(vol))
-                })
+                })?;
+
+                Command::new("sudo")
+                    .arg("chown")
+                    .arg(format!("{}:{}", get_effective_uid(), get_effective_gid()))
+                    .arg(&mountpoint)
+                    .run()?;
+
+                fs::set_permissions(&mountpoint, fs::Permissions::from_mode(0o750))?;
+
+                Ok(vec![])
             }
 
             Cmd::Unmount { vol } => {
-                let mountpoint = Self::get_mountpoint(vol).run(root).and_then(|stdout| {
-                    as_pathbuf(stdout).ok_or_else(|| Error::NoMountpointError(vol.clone()))
-                });
-
                 ZfsCmd::Sudo
                     .run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(root.join(vol)))?;
 
-                if let Ok(dir) = mountpoint {
-                    fs::remove_dir(dir)?;
-                    Ok(Vec::new())
-                } else {
-                    Ok(Vec::new())
-                }
+                // Remove the mountpoint, so there's no doubt the volume is not
+                // mounted. See also notes on Zfs::Mount.
+                Self::get_mountpoint(vol)
+                    .run(root)
+                    .and_then(|stdout| {
+                        as_pathbuf(stdout).ok_or_else(|| Error::NoMountpointError(vol.clone()))
+                    })
+                    .and_then(|mountpoint| fs::remove_dir(mountpoint).map_err(|e| e.into()))
+                    .map(|_| vec![])
             }
 
             Cmd::List => ZfsCmd::User.run(|zfs| {
@@ -205,12 +240,7 @@ impl ZfsCmd {
             };
             f(cmd)
         };
-        let out = cmd.output()?;
-        if out.status.success() {
-            Ok(out.stdout)
-        } else {
-            Err(Error::CmdError(format!("{:?}", cmd), out.stderr))
-        }
+        cmd.run()
     }
 
     #[cfg(target_os = "linux")]
@@ -235,6 +265,7 @@ pub enum Error {
     IoError(io::Error),
     VolInUseError(String, Vec<String>),
     MountsLockError(String, String),
+    CmdIoError(String, io::Error),
     CmdError(String, Vec<u8>),
     CmdOutputParseError(csv::Error),
     VolumeOptionsError(OptsError),
@@ -264,6 +295,7 @@ impl From<Error> for ErrorResponse {
                 "Could not acquire lock when trying to check mount status for volume {}: {}",
                 vol, e
             ),
+            Error::CmdIoError(cmd, e) => format!("{}: {}", cmd, e),
             Error::CmdError(cmd, stderr) => {
                 format!("{}: {}", cmd, String::from_utf8_lossy(&stderr).into_owned())
             }
@@ -454,8 +486,7 @@ impl Zfs {
                     .file_name()
                     .unwrap()
                     .to_string_lossy()
-                    .into_owned()
-                    .to_string();
+                    .into_owned();
                 ds
             })
             .map_err(|e| e.into())
@@ -630,6 +661,25 @@ fn sanitize_vol(vol: &str) -> String {
         static ref RE: Regex = Regex::new("[^-_a-zA-Z0-9]").unwrap();
     }
     RE.replace_all(vol, "_").to_string()
+}
+
+trait CommandExt {
+    fn run(&mut self) -> Result<Vec<u8>, Error>;
+}
+
+impl CommandExt for Command {
+    fn run(&mut self) -> Result<Vec<u8>, Error> {
+        match self.output() {
+            Err(e) => Err(Error::CmdIoError(format!("{:?}", self), e)),
+            Ok(out) => {
+                if out.status.success() {
+                    Ok(out.stdout)
+                } else {
+                    Err(Error::CmdError(format!("{:?}", self), out.stderr))
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
