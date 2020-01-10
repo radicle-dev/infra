@@ -15,6 +15,9 @@ kill_with()  {
     fi
 }
 
+# make sure we're not killing rustc
+cargo build
+
 kill_with "TERM"
 kill_with "INT"
 kill_with "QUIT"
