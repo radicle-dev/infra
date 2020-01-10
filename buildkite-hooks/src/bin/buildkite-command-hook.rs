@@ -42,6 +42,7 @@ impl From<io::Error> for Error {
     }
 }
 
+// TODO: should generalise this hackery
 struct CompletedCommand {
     cmd: Command,
     status: process::ExitStatus,
