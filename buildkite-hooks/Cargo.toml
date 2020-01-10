@@ -2,6 +2,12 @@
 name = "buildkite-hooks"
 version = "0.0.0"
 authors = ["Kim Altintop <kim@monadic.xyz>", "Monadic GmbH <team@monadic.xyz>"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/ci/oscoin"
+description = """
+Monadics Buildkite hooks implemented in a real programming language
+"""
 edition = "2018"
 
 [dependencies]

@@ -1,3 +1,7 @@
+env:
+  DOCKER_IMAGE: "gcr.io/opensourcecoin/buildkite-hooks-build@sha256:0c453a56f4742ae03ef18f23fe2b45bb923d2737f5b547285818ddf5ca25af19"
+  DOCKER_FILE: .docker/rust/Dockerfile
+
 steps:
 - label: "Build & Test `buildkite-hooks`"
   commands:
@@ -13,13 +17,10 @@ steps:
 
 
 - label: "Build & Package `buildkite-hooks`"
-  command: ".buildkite/package.sh"
+  command: ".buildkite/package-buildkite-hooks.sh"
   artifact_paths:
   - "target/debian/*.deb"
   agents:
     production: "true"
     platform: "linux"
-  branches: "master"
-  env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/buildkite-hooks-build"
-    DOCKER_FILE: .docker/rust/Dockerfile
+  #branches: "master"
