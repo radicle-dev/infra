@@ -5,8 +5,6 @@ use std::os::unix::process::ExitStatusExt;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 
-use libc;
-
 use crate::cmd::CommandExt;
 pub use crate::container::*;
 use crate::timeout::Timeout;
@@ -84,10 +82,7 @@ impl Containeriser for Docker {
             .args(&["--label", &opts.build_id])
             .arg("--init")
             .arg("--read-only")
-            .args(&[
-                "--user",
-                &format!("{}={}", get_effective_uid(), get_effective_gid()),
-            ])
+            .args(&["--user", &format!("{}={}", opts.uid, opts.gid)])
             .arg("--cap-drop=ALL")
             .arg("--security-opt=no-new-privileges")
             .args(&["--runtime".into(), opts.runtime.to_string()])
@@ -284,12 +279,4 @@ fn render_mount_arg(mount: &Mount) -> String {
             arg
         }
     }
-}
-
-fn get_effective_uid() -> u32 {
-    unsafe { libc::geteuid() }
-}
-
-fn get_effective_gid() -> u32 {
-    unsafe { libc::getegid() }
 }

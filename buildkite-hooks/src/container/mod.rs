@@ -3,6 +3,8 @@ use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
+use users::{gid_t, uid_t};
+
 use crate::timeout::Timeout;
 
 pub mod docker;
@@ -88,6 +90,8 @@ pub struct RunBuildOptions<Env> {
     pub mounts: Vec<Mount>,
     pub env: Env,
     pub runtime: Runtime,
+    pub uid: uid_t,
+    pub gid: gid_t,
 }
 
 pub struct BuildImageOptions<Env> {

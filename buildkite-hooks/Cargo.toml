@@ -20,6 +20,7 @@ paw = "1.0"
 signal-hook = "0.1"
 structopt = { version = "0.3", features = ["paw"] }
 url = "2.1"
+users = "0.9"
 
 [package.metadata.deb]
 maintainer = "Monadic GmbH <team@monadic.xyz>"

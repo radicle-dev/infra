@@ -3,9 +3,11 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use failure::Fail;
 use structopt::StructOpt;
 use url;
 use url::Url;
+use users::{get_group_by_name, get_user_by_name, Group, User};
 
 pub const MIN_TIMEOUT_MINUTES: u8 = 50;
 pub const MAX_TIMEOUT_MINUTES: u8 = 240;
@@ -34,6 +36,14 @@ pub struct Config {
     /// Size in bytes of the tmpfs mount for build containers
     #[structopt(long, default_value = "200000000")]
     pub tmp_size_bytes: u32,
+
+    /// The username to drop privileges to for build containers
+    #[structopt(long, default_value = "buildkite-builder", parse(try_from_str = getpwnam))]
+    pub builder_user: User,
+
+    /// The groupname to drop privileges to for build containers
+    #[structopt(long, default_value = "buildkite-builder", parse(try_from_str = getgrnam))]
+    pub builder_group: Group,
 
     /// The docker image to use for running the build command
     #[structopt(long, env = "DOCKER_IMAGE")]
@@ -235,4 +245,21 @@ pub fn is_trusted_github_url(url: &Url, trusted_orgs: &[String]) -> bool {
     } else {
         false
     }
+}
+
+#[derive(Debug, Fail)]
+enum IdMapError {
+    #[fail(display = "No such user {}", 0)]
+    NoSuchUser(String),
+
+    #[fail(display = "No such group {}", 0)]
+    NoSuchGroup(String),
+}
+
+fn getpwnam(username: &str) -> Result<User, IdMapError> {
+    get_user_by_name(username).ok_or_else(|| IdMapError::NoSuchUser(username.to_string()))
+}
+
+fn getgrnam(groupname: &str) -> Result<Group, IdMapError> {
+    get_group_by_name(groupname).ok_or_else(|| IdMapError::NoSuchGroup(groupname.to_string()))
 }

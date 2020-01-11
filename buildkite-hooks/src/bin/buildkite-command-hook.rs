@@ -168,6 +168,8 @@ fn main(cfg: Config) -> Result<(), Error> {
             } else {
                 Runtime::Kata
             },
+            uid: cfg.builder_user.uid(),
+            gid: cfg.builder_group.gid(),
         },
         &timeout,
     )?;
