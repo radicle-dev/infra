@@ -129,12 +129,27 @@ impl Config {
             self.tmp_size_bytes
         };
 
+        // For some reason, the command hook gets invoked for uploading the repo
+        // pipeline.yaml (`buildkite-agent pipeline upload`), too. Make sure we
+        // run this in a vanilla alpine containers, and disable all image
+        // building.
+        if self.is_agent_command() {
+            self.build_container_image = Some("alpine".into());
+            self.build_container_dockerfile = None;
+            self.step_container_image = None;
+            self.step_container_dockerfile = None;
+        }
+
         self
     }
 
     /// A unique ID per `command` hook invocation
     pub fn command_id(&self) -> String {
         format!("{}-{}", self.build_id, self.step_id)
+    }
+
+    pub fn is_agent_command(&self) -> bool {
+        self.build_command.starts_with("buildkite-agent")
     }
 
     pub fn is_trusted_build(&self) -> bool {

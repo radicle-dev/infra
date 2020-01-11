@@ -83,6 +83,7 @@ struct VolumeMounts {
     img_cache: Mount,
     sources: Mount,
     tmpfs: Mount,
+    buildkite_agent: Mount,
 }
 
 #[paw::main]
@@ -102,21 +103,26 @@ fn main(cfg: Config) -> Result<(), Error> {
     decrypt_repo_secrets(&cfg)?;
 
     // Pull or build container image
-    let mut build_container_image = match cfg.build_container_image {
-        Some(ref img) => img.clone(),
-        None => format!(
-            "gcr.io/opensourcecoin/{}-build:{}",
-            cfg.buildkite_pipeline_slug, cfg.commit
-        ),
-    };
+    let mut build_container_image = {
+        let image = match cfg.build_container_image {
+            Some(ref img) => img.clone(),
+            None => format!(
+                "gcr.io/opensourcecoin/{}-build:{}",
+                cfg.buildkite_pipeline_slug, cfg.commit
+            ),
+        };
 
-    if !build_container_image.starts_with("gcr.io/opensourcecoin/") {
-        return Err(Error::InvalidImageRegistry(build_container_image));
-    }
+        if cfg.is_agent_command() || image.starts_with("gcr.io/opensourcecoin/") {
+            Ok(image)
+        } else {
+            Err(Error::InvalidImageRegistry(image))
+        }
+    }?;
 
     info!("Pulling docker image {}", build_container_image);
     let cfg2 = cfg.clone(); // prevent move into closure
-    docker.pull(&build_container_image).or_else(|_| {
+    docker.pull(&build_container_image).or_else(|e| {
+        info!("Failed to pull image {}: {}", build_container_image, e);
         // Re-tag with current commit
         let colon = ':';
         build_container_image = format!(
@@ -128,13 +134,10 @@ fn main(cfg: Config) -> Result<(), Error> {
             cfg2.commit,
         );
 
-        info!(
-            "Couldn't pull image, building instead as {}",
-            build_container_image
-        );
         cfg2.clone()
             .build_container_dockerfile
             .map_or(Err(Error::NoDockerFile), |dockerfile| {
+                info!("Building build container image {}", build_container_image);
                 build_image(
                     &docker,
                     &cfg2,
@@ -153,7 +156,12 @@ fn main(cfg: Config) -> Result<(), Error> {
             build_id: cfg.command_id(),
             image: build_container_image,
             cmd: cfg.build_command.clone(),
-            mounts: vec![mounts.sources, mounts.tmpfs, mounts.build_cache],
+            mounts: vec![
+                mounts.sources,
+                mounts.tmpfs,
+                mounts.build_cache,
+                mounts.buildkite_agent,
+            ],
             env: env::safe_buildkite_vars().chain(env::build_vars()),
             runtime: if cfg.is_trusted_build() {
                 Runtime::Runc
@@ -167,7 +175,7 @@ fn main(cfg: Config) -> Result<(), Error> {
     // Build step container image
     match (&cfg.step_container_dockerfile, &cfg.step_container_image) {
         (Some(ref dockerfile), Some(ref image_name)) => {
-            info!("Building step container image");
+            info!("Building step container image {}", image_name);
             build_image(
                 &docker,
                 &cfg,
@@ -308,6 +316,12 @@ where
             dst: PathBuf::from("/tmp"),
             size_in_bytes: cfg.tmp_size_bytes,
             mode: 0o777,
+        },
+        buildkite_agent: Mount::Bind {
+            // TODO: should we check it's actually installed here?
+            src: PathBuf::from("/usr/bin/buildkite-agent"),
+            dst: PathBuf::from("/usr/bin/buildkite-agent"),
+            readonly: true,
         },
     })
 }
