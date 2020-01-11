@@ -58,6 +58,20 @@ pub struct Config {
     #[structopt(long, env = "STEP_DOCKER_CONTEXT", parse(from_os_str))]
     pub step_container_context: Option<PathBuf>,
 
+    /// Whether to use a shared master cache (i.e. if true, do not scope the
+    /// cache volume to the agent instance; if false maintain a separate cache
+    /// per agent).
+    ///
+    /// It is the users responsibility to constrain the concurrency of master
+    /// builds via the pipeline settings.
+    #[structopt(
+        long,
+        default_value = "false",
+        env = "SHARED_MASTER_CACHE",
+        parse(try_from_str)
+    )]
+    pub shared_master_cache: bool,
+
     /// The branch being built
     #[structopt(long, env = "BUILDKITE_BRANCH")]
     pub branch: String,

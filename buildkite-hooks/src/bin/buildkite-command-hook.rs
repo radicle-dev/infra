@@ -219,7 +219,13 @@ where
 {
     let cache_volume_prefix = format!(
         "cache_{}_{}_{}",
-        cfg.buildkite_agent_name, cfg.buildkite_organization_slug, cfg.buildkite_pipeline_slug,
+        if cfg.shared_master_cache {
+            "shared"
+        } else {
+            &cfg.buildkite_agent_name
+        },
+        cfg.buildkite_organization_slug,
+        cfg.buildkite_pipeline_slug,
     );
 
     let master_cache_volume_name = format!(
