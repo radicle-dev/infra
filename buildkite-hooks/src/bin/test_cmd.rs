@@ -18,7 +18,7 @@ fn main() {
                 exit(0)
             }
             Err(e) if e.kind() == io::ErrorKind::TimedOut => {
-                println!("Command timed out!");
+                println!("{}", e);
                 exit(1)
             }
             Err(e) => {

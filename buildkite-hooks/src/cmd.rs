@@ -41,13 +41,20 @@ impl CommandExt for Command {
                 }
 
                 // Shutdown if timed out
-                if Instant::now().saturating_duration_since(start) >= timeout {
+                let ran = Instant::now().saturating_duration_since(start);
+                if ran >= timeout {
                     shutdown(child);
-                    return Err(io::Error::new(io::ErrorKind::TimedOut, "Command timed out"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        format!("Command timed out after {}ms", ran.as_millis()),
+                    ));
                 }
 
                 // Otherwise, loop
             }
+
+            // ... but not too busy
+            thread::sleep(Duration::from_millis(42));
         });
 
         self.spawn().and_then(|child| {
