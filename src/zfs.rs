@@ -124,8 +124,12 @@ impl Cmd {
                 //
                 // We create the dataset without a mountpoint, so we don't need
                 // root. Then, temporarily mount it and adjust the ownership and
-                // permissions.
+                // permissions. In order to avoid dangling mountpoint
+                // directories, we also create the mountpoint here so it is
+                // owned by the driver.
                 let mountpoint = ZfsCmd::get_mountpoint_of(root)?.join(vol);
+
+                fs::create_dir(&mountpoint)?;
 
                 ZfsCmd::set_mountpoint_of(&dataset, &mountpoint)?;
 
@@ -160,17 +164,43 @@ impl Cmd {
             }
 
             Cmd::Destroy { vol } => {
-                ZfsCmd::User.run(|zfs| zfs.args(&["destroy", "-r"]).arg(root.join(vol)))
+                let res =
+                    ZfsCmd::User.run(|zfs| zfs.args(&["destroy", "-r"]).arg(root.join(vol)))?;
+
+                // Clean up the mountpoint if we failed to do so when unmounting
+                let _ = {
+                    let mountpoint = ZfsCmd::get_mountpoint_of(root)?.join(vol);
+                    if mountpoint.exists() {
+                        fs::remove_dir(mountpoint)
+                    } else {
+                        Ok(())
+                    }
+                };
+
+                Ok(res)
             }
 
             Cmd::Mount { vol } => {
                 let mountpoint = ZfsCmd::get_mountpoint_of(root)?.join(vol);
+
+                fs::create_dir(&mountpoint)?;
                 ZfsCmd::set_mountpoint_of(&root.join(vol), &mountpoint)?;
 
                 Ok(vec![])
             }
 
-            Cmd::Unmount { vol } => ZfsCmd::remove_mountpoint_of(&root.join(vol)).map(|()| vec![]),
+            Cmd::Unmount { vol } => {
+                let res = ZfsCmd::remove_mountpoint_of(&root.join(vol)).map(|()| vec![])?;
+
+                // Remove the mountpoint to prevent accidental use while not
+                // mounted. It's not an error if that fails.
+                let _ = {
+                    let mountpoint = ZfsCmd::get_mountpoint_of(root)?.join(vol);
+                    fs::remove_dir(mountpoint)
+                };
+
+                Ok(res)
+            }
 
             Cmd::List => ZfsCmd::User.run(|zfs| {
                 zfs.arg("list")
