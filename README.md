@@ -21,18 +21,25 @@ the build cache of the builds of the default branch. This behavior is controlled
 via the `SHARED_MASTER_CACHE` environment variable.
 
 ```yaml
-steps:
-- command: "tests.sh"
-  branches: "!master"
-- command: "tests.sh"
-  concurrency: 1
-  branches: "master"
+
+.test: &test
+  command: "tests.sh"
   env:
     SHARED_MASTER_CACHE: true
+steps:
+- branches: "!master"
+  <<: *test
+- branches: "master"
+  concurrency: 1
+  concurrency_group: 1
+  <<: *test
 ```
 
 To ensure that two runners don’t access the cache concurrently the concurrency
 must be limited.
+
+Note that `SHARED_MASTER_CACHE` cache must be enabled for both steps so that
+branch builds also know to use the master cache.
 
 ## Building docker images
 
