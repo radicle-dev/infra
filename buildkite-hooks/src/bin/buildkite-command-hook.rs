@@ -1,8 +1,6 @@
-use std::fmt;
 use std::io;
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::process;
 use std::process::Command;
 use std::time::Duration;
 
@@ -10,6 +8,8 @@ use failure::Fail;
 use log::{debug, info};
 use paw;
 
+use buildkite_hooks::cmd;
+use buildkite_hooks::cmd::CommandExt;
 use buildkite_hooks::config::Config;
 use buildkite_hooks::container::docker::*;
 use buildkite_hooks::env;
@@ -17,12 +17,6 @@ use buildkite_hooks::timeout::Timeout;
 
 #[derive(Debug, Fail)]
 enum Error {
-    #[fail(display = "Child process `{}` was killed by a signal", 0)]
-    ChildKilled(DisplayCommand),
-
-    #[fail(display = "Child process `{}` was killed by a signal", 0)]
-    ChildKilledAny(String),
-
     #[fail(display = "Invalid container registry for image: {}", 0)]
     InvalidImageRegistry(String),
 
@@ -31,6 +25,12 @@ enum Error {
 
     #[fail(display = "No image name given")]
     NoImageName,
+
+    #[fail(display = "{}", 0)]
+    Cmd(cmd::Error),
+
+    #[fail(display = "{}", 0)]
+    Sig(cmd::SignalsError),
 
     #[fail(display = "{}", 0)]
     Io(io::Error),
@@ -42,39 +42,15 @@ impl From<io::Error> for Error {
     }
 }
 
-// TODO: should generalise this hackery
-struct CompletedCommand {
-    cmd: Command,
-    status: process::ExitStatus,
-}
-
-impl From<CompletedCommand> for Result<(), Error> {
-    fn from(compl: CompletedCommand) -> Self {
-        if compl.status.success() {
-            Ok(())
-        } else {
-            compl
-                .status
-                .code()
-                .map_or(Err(Error::ChildKilled(compl.cmd.into())), |code| {
-                    Err(Error::Io(io::Error::from_raw_os_error(code)))
-                })
-        }
+impl From<cmd::Error> for Error {
+    fn from(e: cmd::Error) -> Self {
+        Self::Cmd(e)
     }
 }
 
-#[derive(Debug)]
-struct DisplayCommand(String);
-
-impl From<Command> for DisplayCommand {
-    fn from(cmd: Command) -> Self {
-        DisplayCommand(format!("{:?}", cmd))
-    }
-}
-
-impl fmt::Display for DisplayCommand {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+impl From<cmd::SignalsError> for Error {
+    fn from(e: cmd::SignalsError) -> Self {
+        Self::Sig(e)
     }
 }
 
@@ -197,18 +173,18 @@ fn main(cfg: Config) -> Result<(), Error> {
 fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
     let secrets_yaml = cfg.checkout_path.join(".buildkite/secrets.yaml");
     if secrets_yaml.exists() {
-        let mut cmd = Command::new("sops");
-        cmd.args(&[
-            "--output-type",
-            "dotenv",
-            "--output",
-            ".secrets",
-            "--decrypt",
-        ])
-        .arg(secrets_yaml);
-        cmd.status()
+        Command::new("sops")
+            .args(&[
+                "--output-type",
+                "dotenv",
+                "--output",
+                ".secrets",
+                "--decrypt",
+            ])
+            .arg(secrets_yaml)
+            .safe()?
+            .succeed()
             .map_err(|e| e.into())
-            .and_then(|status| CompletedCommand { cmd, status }.into())
     } else {
         debug!("No .buildkite/secrets.yaml in repository");
         Ok(())
@@ -345,26 +321,18 @@ fn build_image<C>(
 where
     C: Containeriser,
 {
-    let status = contained.build_image(
-        BuildImageOptions {
-            build_id: cfg.command_id(),
-            image: image_name.to_string(),
-            dockerfile: dockerfile.to_path_buf(),
-            context: dockerfile.parent().unwrap_or(&Path::new(".")).to_path_buf(),
-            sources: cfg.checkout_path.clone(),
-            cache: cache.clone(),
-            build_args: env::safe_buildkite_vars(),
-        },
-        timeout,
-    )?;
-
-    if status.success() {
-        Ok(())
-    } else {
-        status
-            .code()
-            .map_or(Err(Error::ChildKilledAny("build_image".into())), |code| {
-                Err(Error::Io(io::Error::from_raw_os_error(code)))
-            })
-    }
+    contained
+        .build_image(
+            BuildImageOptions {
+                build_id: cfg.command_id(),
+                image: image_name.to_string(),
+                dockerfile: dockerfile.to_path_buf(),
+                context: dockerfile.parent().unwrap_or(&Path::new(".")).to_path_buf(),
+                sources: cfg.checkout_path.clone(),
+                cache: cache.clone(),
+                build_args: env::safe_buildkite_vars(),
+            },
+            timeout,
+        )
+        .map_err(|e| e.into())
 }

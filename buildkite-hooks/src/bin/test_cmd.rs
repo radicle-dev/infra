@@ -11,7 +11,10 @@ fn main() {
     if let Some(cmd) = argv.nth(0) {
         match Command::new(cmd)
             .args(argv)
-            .safe_status(Duration::from_secs(5))
+            .safe()
+            .unwrap()
+            .timeout(Duration::from_secs(5))
+            .status()
         {
             Ok(status) => {
                 println!("Command exited with {:?}", status);

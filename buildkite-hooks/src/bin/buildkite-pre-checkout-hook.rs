@@ -1,8 +1,8 @@
 use std::fs;
 use std::io;
 use std::process::Command;
-use std::time::Duration;
 
+use buildkite_hooks::cmd;
 use buildkite_hooks::cmd::CommandExt;
 use buildkite_hooks::env;
 
@@ -10,18 +10,31 @@ use buildkite_hooks::env;
 enum Error {
     Var(env::VarError),
     Io(io::Error),
-    Killed,
+    Cmd(cmd::Error),
+    Sig(cmd::SignalsError),
 }
 
 impl From<env::VarError> for Error {
     fn from(e: env::VarError) -> Self {
-        Error::Var(e)
+        Self::Var(e)
     }
 }
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        Error::Io(e)
+        Self::Io(e)
+    }
+}
+
+impl From<cmd::Error> for Error {
+    fn from(e: cmd::Error) -> Self {
+        Self::Cmd(e)
+    }
+}
+
+impl From<cmd::SignalsError> for Error {
+    fn from(e: cmd::SignalsError) -> Self {
+        Self::Sig(e)
     }
 }
 
@@ -33,17 +46,10 @@ fn main() -> Result<(), Error> {
 
     fs::create_dir_all(&checkout_path)?;
 
-    let status = Command::new("sudo")
+    Command::new("sudo")
         .args(&["chown", "-R", "buildkite-agent"])
         .arg(checkout_path)
-        .safe_status(Duration::from_secs(1))
-        .map_err(Error::Io)?;
-
-    if status.success() {
-        Ok(())
-    } else {
-        status.code().map_or(Err(Error::Killed), |code| {
-            Err(Error::Io(io::Error::from_raw_os_error(code)))
-        })
-    }
+        .safe()?
+        .succeed()
+        .map_err(|e| e.into())
 }

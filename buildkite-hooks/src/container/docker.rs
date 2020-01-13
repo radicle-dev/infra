@@ -1,10 +1,9 @@
 use std::ffi::OsStr;
-use std::io;
 use std::os::unix::ffi::OsStrExt;
-use std::os::unix::process::ExitStatusExt;
 use std::path::PathBuf;
-use std::process::{Command, ExitStatus};
+use std::process::Command;
 
+use crate::cmd;
 use crate::cmd::CommandExt;
 pub use crate::container::*;
 use crate::timeout::Timeout;
@@ -27,8 +26,8 @@ impl Default for Docker {
 }
 
 impl Containeriser for Docker {
-    fn create_volume(&self, opts: CreateVolumeOptions) -> Result<Volume, io::Error> {
-        let status = Command::new("docker")
+    fn create_volume(&self, opts: CreateVolumeOptions) -> Result<Volume, cmd::Error> {
+        Command::new("docker")
             .arg("volume")
             .arg("create")
             .arg("--driver")
@@ -45,31 +44,21 @@ impl Containeriser for Docker {
                     .map(|label| vec!["--label", label])
                     .flatten(),
             )
-            .status()?;
-
-        if status.success() {
-            Ok(Volume::Persistent {
+            .safe()?
+            .succeed()
+            .map(|()| Volume::Persistent {
                 name: opts.name,
                 driver: opts.driver,
                 opts: opts.volume_opts,
                 labels: opts.labels,
             })
-        } else {
-            status.code().map_or(
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "`docker volume create` killed by signal",
-                )),
-                |code| Err(io::Error::from_raw_os_error(code)),
-            )
-        }
     }
 
     fn run_build<Env, S>(
         &self,
         opts: RunBuildOptions<Env>,
         timeout: &Timeout,
-    ) -> Result<ExitStatus, io::Error>
+    ) -> Result<(), cmd::Error>
     where
         Env: Iterator<Item = (S, S)>,
         S: AsRef<str>,
@@ -96,14 +85,16 @@ impl Containeriser for Docker {
             )
             .arg(opts.image)
             .args(&["/bin/sh", "-e", "-c", &opts.cmd])
-            .safe_status(timeout.remaining())
+            .safe()?
+            .timeout(timeout.remaining())
+            .succeed()
     }
 
     fn build_image<Env, S>(
         &self,
         opts: BuildImageOptions<Env>,
         timeout: &Timeout,
-    ) -> Result<ExitStatus, io::Error>
+    ) -> Result<(), cmd::Error>
     where
         Env: Iterator<Item = (S, S)>,
         S: AsRef<str>,
@@ -165,38 +156,48 @@ impl Containeriser for Docker {
                 ),
             ])
             .arg(&opts.context.display().to_string())
-            .safe_status(timeout.remaining())?;
+            .safe()?
+            .timeout(timeout.remaining())
+            .succeed()?;
 
         Command::new("docker")
             .arg("load")
             .arg("--quiet")
             .args(&["--input", &format!("/tmp/{}.tar", opts.build_id)])
-            .safe_status(timeout.remaining())?;
+            .safe()?
+            .timeout(timeout.remaining())
+            .succeed()?;
 
         Command::new("docker")
             .arg("push")
             .arg(opts.image)
-            .safe_status(timeout.remaining())
+            .safe()?
+            .timeout(timeout.remaining())
+            .succeed()
     }
 
-    fn reap_containers(&self, build_id: &str) -> Result<ExitStatus, io::Error> {
-        let ps_out = Command::new("docker")
-            .args(&[
-                "ps",
-                "--filter",
-                &format!("label={}", build_id),
-                "--format",
-                "{{.ID}}",
-            ])
-            .output()?;
+    fn reap_containers(&self, build_id: &str) -> Result<(), cmd::Error> {
+        let mut ps = Command::new("docker");
+        ps.args(&[
+            "ps",
+            "--filter",
+            &format!("label={}", build_id),
+            "--format",
+            "{{.ID}}",
+        ]);
+        let out = ps
+            .output()
+            .map_err(|e| cmd::Error::Io(cmd::command_line(&ps), e))?;
 
-        if !ps_out.status.success() {
-            return Ok(ps_out.status);
+        if !out.status.success() {
+            return Err(cmd::Error::NonZeroExitStatus(
+                cmd::command_line(&ps),
+                out.status,
+            ));
         }
 
         let nl: u8 = 10;
-        ps_out
-            .stdout
+        out.stdout
             .split(|x| x == &nl)
             .map(OsStr::from_bytes)
             .for_each(|container| {
@@ -208,22 +209,15 @@ impl Containeriser for Docker {
                     .status();
             });
 
-        Ok(ExitStatus::from_raw(0))
+        Ok(())
     }
 
-    fn pull(&self, image: &str) -> Result<(), io::Error> {
-        let status = Command::new("docker").arg("pull").arg(image).status()?;
-        if status.success() {
-            Ok(())
-        } else {
-            status.code().map_or(
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "`docker pull` killed by signal",
-                )),
-                |code| Err(io::Error::from_raw_os_error(code)),
-            )
-        }
+    fn pull(&self, image: &str) -> Result<(), cmd::Error> {
+        Command::new("docker")
+            .arg("pull")
+            .arg(image)
+            .safe()?
+            .succeed()
     }
 }
 

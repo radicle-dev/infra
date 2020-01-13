@@ -1,10 +1,9 @@
 use std::fmt;
-use std::io;
 use std::path::PathBuf;
-use std::process::ExitStatus;
 
 use users::{gid_t, uid_t};
 
+use crate::cmd;
 use crate::timeout::Timeout;
 
 pub mod docker;
@@ -106,14 +105,14 @@ pub struct BuildImageOptions<Env> {
 
 pub trait Containeriser {
     /// Create a persistent volume
-    fn create_volume(&self, opts: CreateVolumeOptions) -> Result<Volume, io::Error>;
+    fn create_volume(&self, opts: CreateVolumeOptions) -> Result<Volume, cmd::Error>;
 
     /// Run the build command `cmd` in a container
     fn run_build<Env, S>(
         &self,
         opts: RunBuildOptions<Env>,
         timeout: &Timeout,
-    ) -> Result<ExitStatus, io::Error>
+    ) -> Result<(), cmd::Error>
     where
         Env: Iterator<Item = (S, S)>,
         S: AsRef<str>;
@@ -123,14 +122,14 @@ pub trait Containeriser {
         &self,
         opts: BuildImageOptions<Env>,
         timeout: &Timeout,
-    ) -> Result<ExitStatus, io::Error>
+    ) -> Result<(), cmd::Error>
     where
         Env: Iterator<Item = (S, S)>,
         S: AsRef<str>;
 
     /// Reap any runaway containers
-    fn reap_containers(&self, build_id: &str) -> Result<ExitStatus, io::Error>;
+    fn reap_containers(&self, build_id: &str) -> Result<(), cmd::Error>;
 
     /// Pull a container image
-    fn pull(&self, image: &str) -> Result<(), io::Error>;
+    fn pull(&self, image: &str) -> Result<(), cmd::Error>;
 }
