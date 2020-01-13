@@ -79,6 +79,8 @@ impl Cmd {
     fn run(&self, root: &PathBuf) -> Result<Vec<u8>, Error> {
         match self {
             Cmd::Create { vol, opts } => {
+                let dataset = root.join(vol);
+
                 match opts.snapshot_of {
                     Some(ref from) => {
                         // snapshot the `from` fs
@@ -98,7 +100,7 @@ impl Cmd {
                                     .args(opts.as_args())
                                     .args(&["-o", "mountpoint=none"])
                                     .arg(snap.to_owned())
-                                    .arg(root.join(vol))
+                                    .arg(&dataset)
                             })
                             .or_else(|e| ignore_already_exists(e).and(Ok(vec![])))
                             .or_else(|e| ignore_mount_error(e).and(Ok(vec![])))?;
@@ -110,9 +112,50 @@ impl Cmd {
                             zfs.arg("create")
                                 .args(opts.as_args())
                                 .args(&["-o", "mountpoint=none"])
-                                .arg(root.join(vol))
+                                .arg(&dataset)
                         })
                         .or_else(|e| ignore_mount_error(e).map(|_| vec![])),
+                }?;
+
+                // ZoL can't delegate mount permissions (via allow), but we
+                // ultimately want the volume to be owned by the driver's user.
+                // ZFS remembers the ownership / permissions if set on a mounted
+                // dataset, though. So:
+                //
+                // We create the dataset without a mountpoint, so we don't need
+                // root. Then, temporarily mount it and adjust the ownership and
+                // permissions.
+                let mountpoint = ZfsCmd::get_mountpoint_of(root)?.join(vol);
+
+                ZfsCmd::set_mountpoint_of(&dataset, &mountpoint)?;
+
+                let res1 = {
+                    Command::new("sudo")
+                        .arg("chown")
+                        .arg({
+                            // Try hard to use username:groupname instead of uid:gid
+                            let mut user = get_effective_username()
+                                .unwrap_or_else(|| get_effective_uid().to_string().into());
+                            let group = get_effective_groupname()
+                                .unwrap_or_else(|| get_effective_gid().to_string().into());
+
+                            user.push(":");
+                            user.push(group);
+                            user
+                        })
+                        .arg(&mountpoint)
+                        .run()?;
+
+                    fs::set_permissions(&mountpoint, fs::Permissions::from_mode(0o750))
+                };
+
+                // Unmount in any case
+                let res2 = ZfsCmd::remove_mountpoint_of(&dataset);
+
+                match (res1, res2) {
+                    (Err(e), _) => Err(e.into()),
+                    (_, Err(e)) => Err(e),
+                    (Ok(_), Ok(_)) => Ok(vec![]),
                 }
             }
 
@@ -121,89 +164,13 @@ impl Cmd {
             }
 
             Cmd::Mount { vol } => {
-                let root_mountpoint = ZfsCmd::User
-                    .run(|zfs| {
-                        zfs.args(&["get", "mountpoint", "-H", "-o", "value"])
-                            .arg(root)
-                    })
-                    .and_then(|stdout| {
-                        as_pathbuf(stdout).ok_or_else(|| {
-                            Error::NoMountpointError(root.to_str().unwrap().to_string())
-                        })
-                    })?;
-                let mountpoint = root_mountpoint.join(vol);
-
-                // ZoL can't delegate mount privileges, so we need to run this
-                // as root.
-                //
-                // There's a catch:
-                //
-                // The ownership/permissions of the mountpoint is also what
-                // docker sees. For unprivileged containers to be able to write
-                // to the volume, we run them under the same unprivileged user
-                // as zockervols, and make it so the ownership matches.
-                //
-                // Now, if the mountpoint doesn't exist, zfs creates it for us,
-                // and leaves it in place after unmounting -- however, it will
-                // be owned by root, since we used sudo. Once would assume that,
-                // if we just create the mountpoint beforehand, and change the
-                // ownership accordingly, it would Just Work.
-                //
-                // Hah!
-                //
-                // It sometimes works, and sometimes doesn't. What's more
-                // bizarre is that the ownership may get reset to root when
-                // mounted (effectively an overlay mount), or it may get reset
-                // to root on the mountpoint that's left in place, while zfs
-                // remembers the ownership when mounting. Or it may get reset to
-                // root in both cases. Once the ownership is set on a mounted
-                // volume, however, zfs seems to remember that, even if we
-                // remove the mountpoint.
-                //
-                // So be it: we just adjust ownership and permissions on the
-                // mounted volume every time.
-                //
-                ZfsCmd::Sudo.run(|zfs| {
-                    zfs.arg("set")
-                        .arg(format!("mountpoint={}", mountpoint.to_str().unwrap()))
-                        .arg(root.join(vol))
-                })?;
-
-                Command::new("sudo")
-                    .arg("chown")
-                    .arg({
-                        // Try hard to use username:groupname instead of uid:gid
-                        let mut user = get_effective_username()
-                            .unwrap_or_else(|| get_effective_uid().to_string().into());
-                        let group = get_effective_groupname()
-                            .unwrap_or_else(|| get_effective_gid().to_string().into());
-
-                        user.push(":");
-                        user.push(group);
-                        user
-                    })
-                    .arg(&mountpoint)
-                    .run()?;
-
-                fs::set_permissions(&mountpoint, fs::Permissions::from_mode(0o750))?;
+                let mountpoint = ZfsCmd::get_mountpoint_of(root)?.join(vol);
+                ZfsCmd::set_mountpoint_of(&root.join(vol), &mountpoint)?;
 
                 Ok(vec![])
             }
 
-            Cmd::Unmount { vol } => {
-                ZfsCmd::Sudo
-                    .run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(root.join(vol)))?;
-
-                // Remove the mountpoint, so there's no doubt the volume is not
-                // mounted. See also notes on Zfs::Mount.
-                Self::get_mountpoint(vol)
-                    .run(root)
-                    .and_then(|stdout| {
-                        as_pathbuf(stdout).ok_or_else(|| Error::NoMountpointError(vol.clone()))
-                    })
-                    .and_then(|mountpoint| fs::remove_dir(mountpoint).map_err(|e| e.into()))
-                    .map(|_| vec![])
-            }
+            Cmd::Unmount { vol } => ZfsCmd::remove_mountpoint_of(&root.join(vol)).map(|()| vec![]),
 
             Cmd::List => ZfsCmd::User.run(|zfs| {
                 zfs.arg("list")
@@ -269,6 +236,34 @@ impl ZfsCmd {
     #[cfg(not(target_os = "linux"))]
     fn sudo(&self) -> bool {
         false
+    }
+
+    fn get_mountpoint_of(dataset: &Path) -> Result<PathBuf, Error> {
+        Self::User
+            .run(|zfs| {
+                zfs.args(&["get", "mountpoint", "-H", "-o", "value"])
+                    .arg(dataset)
+            })
+            .and_then(|stdout| {
+                as_pathbuf(stdout)
+                    .ok_or_else(|| Error::NoMountpointError(dataset.display().to_string()))
+            })
+    }
+
+    fn set_mountpoint_of(dataset: &Path, mountpoint: &Path) -> Result<(), Error> {
+        Self::Sudo
+            .run(|zfs| {
+                zfs.arg("set")
+                    .arg(format!("mountpoint={}", mountpoint.display()))
+                    .arg(dataset)
+            })
+            .map(|_| ())
+    }
+
+    fn remove_mountpoint_of(dataset: &Path) -> Result<(), Error> {
+        Self::Sudo
+            .run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(dataset))
+            .map(|_| ())
     }
 }
 
