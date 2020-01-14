@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-declare script_name="${0##*/}"
+declare -r script_name="${0##*/}"
 
 declare -rx RUST_BACKTRACE=1
 declare -rx RUST_LOG=info
-exec "/usr/local/bin/buildkite-${script_name}-hook"
+exec "/var/lib/buildkite-hooks/bin/buildkite-${script_name}-hook"
