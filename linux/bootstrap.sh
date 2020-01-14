@@ -32,6 +32,7 @@ apt_install() {
 apt_packages() {
     apt_install \
         buildkite-agent \
+        buildkite-hooks \
         ca-certificates \
         containerd.io \
         curl \
@@ -142,23 +143,11 @@ config() {
             --plaintext-file="${ciph%.asc}"
     done < <(find /etc -type f -name "*.asc" -print0)
 
-    chown -R buildkite-agent:buildkite-agent /etc/buildkite-agent
-    find /etc/buildkite-agent -maxdepth 1 -type f -exec chmod 600 {} \;
-    chmod 755 /etc/buildkite-agent/hooks/*
-
     chmod 440 /etc/gce/*
     chgrp buildkite-agent /etc/gce/*
 
-    chown -R root:root /etc/docker
-    chmod 600 /etc/docker/daemon.json
-
     chown -R root:root /etc/systemd/system
     find /etc/systemd/system -type f -exec chmod 644 {} \;
-    chgrp buildkite-agent /etc/systemd/system/docker-volume-prune.sh
-    chmod 754 /etc/systemd/system/docker-volume-prune.sh
-
-    chown -R root:root /etc/sudoers.d
-    chmod 440 /etc/sudoers.d/*
 
     set +x
 }
@@ -205,8 +194,6 @@ services() {
     local units=(
         docker
         zockervols.socket
-        docker-volume-prune.timer
-        docker-system-prune.timer
     )
 
     local -i cpus agents

@@ -33,4 +33,11 @@ assets = [
     ["target/release/buildkite-command-hook", "var/lib/buildkite-hooks/bin/", "755"],
     ["target/release/buildkite-pre-checkout-hook", "var/lib/buildkite-hooks/bin/", "755"],
     ["target/release/buildkite-pre-exit-hook", "var/lib/buildkite-hooks/bin/", "755"],
+
+    ["etc/buildkite-hooks/buildkite-agent.cfg", "etc/buildkite-hooks/buildkite-agent.cfg", "644"],
+    ["etc/systemd/system/*.service", "etc/systemd/system/", "644"],
+    ["etc/systemd/system/*.timer", "etc/systemd/system/", "644"],
+    ["etc/systemd/system/*.sh", "etc/systemd/system/", "744"],
+    ["etc/sudoers.d/buildkite", "etc/sudoers.d/buildkite", "440"],
+    ["etc/docker/daemon.json", "etc/docker/daemon.json", "644"]
 ]

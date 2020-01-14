@@ -10,7 +10,8 @@ Cmnd_Alias BK_AGENT = \
 #
 Cmnd_Alias BK_BUILDER = \
     /sbin/zfs set mountpoint=none tank/zocker/*, \
-    /sbin/zfs set mountpoint=/mnt/zocker/* tank/zocker/*
+    /sbin/zfs set mountpoint=/mnt/zocker/* tank/zocker/*, \
+    /bin/chown * /mnt/zocker/*
 
 buildkite-agent   ALL = NOPASSWD: BK_AGENT
 buildkite-builder ALL = NOPASSWD: BK_BUILDER

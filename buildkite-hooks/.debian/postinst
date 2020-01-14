@@ -1,6 +1,41 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-ln -sf /usr/local/bin/buildkite-command-hook /usr/local/bin/buildkite-command-wrapper
-ln -sf /usr/local/bin/buildkite-pre-checkout-hook /usr/local/bin/buildkite-command-wrapper
-ln -sf /usr/local/bin/buildkite-pre-exit-hook /usr/local/bin/buildkite-command-wrapper
+mkdir -p /etc/buildkite-hooks/hooks
+
+ln -sf /usr/local/bin/buildkite-command-wrapper /etc/buildkite-hooks/hooks/command
+ln -sf /usr/local/bin/buildkite-command-wrapper /etc/buildkite-hooks/hooks/pre-checkout
+ln -sf /usr/local/bin/buildkite-command-wrapper /etc/buildkite-hooks/hooks/pre-exit
+
+
+services() {
+    systemctl daemon-reload
+
+    local units=(
+        docker
+        zockervols.socket
+        docker-volume-prune.timer
+        docker-system-prune.timer
+    )
+
+    local -i cpus agents
+
+    cpus=$(nproc)
+    cpus=$((cpus < 2 ? 2 : cpus))
+
+    agents=$((cpus / 2))
+    for i in $(seq 0 $((agents - 1)))
+    do
+        units+=("buildkite-agent@${i}")
+    done
+
+    for unit in "${units[@]}"
+    do
+        for cmd in enable restart
+        do
+            systemctl $cmd "$unit"
+        done
+    done
+}
+
+services
