@@ -21,8 +21,7 @@ docker volume create \
     --driver=zockervols \
     --opt="quota=${CACHE_QUOTA_GiB}GiB" \
     --opt="exec=on" \
-    --quiet
-    "$master_cache_volume"
+    "$master_cache_volume" >/dev/null
 echo "Using master cache volume ${master_cache_volume}"
 
 # [Note on CI and organizations]
