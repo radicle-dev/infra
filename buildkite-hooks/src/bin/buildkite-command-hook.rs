@@ -25,7 +25,7 @@ fn main(cfg: Config) -> Result<(), Error> {
 
     let cfg = cfg.valid();
 
-    let docker = Docker::new();
+    let docker = Docker::new(&cfg.command_id());
     let timeout = Timeout::new(Duration::from_secs(cfg.timeout_minutes as u64 * 60));
 
     // Setup cache volumes
@@ -85,7 +85,6 @@ fn main(cfg: Config) -> Result<(), Error> {
     info!("Running build command");
     docker.run_build(
         RunBuildOptions {
-            build_id: cfg.command_id(),
             image: build_container_image,
             cmd: cfg.build_command.clone(),
             mounts: vec![
@@ -267,7 +266,6 @@ where
     contained
         .build_image(
             BuildImageOptions {
-                build_id: cfg.command_id(),
                 image: image_name.to_string(),
                 dockerfile: dockerfile.to_path_buf(),
                 context: dockerfile.parent().unwrap_or(&Path::new(".")).to_path_buf(),

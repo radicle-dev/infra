@@ -83,7 +83,6 @@ pub struct CreateVolumeOptions {
 }
 
 pub struct RunBuildOptions<Env> {
-    pub build_id: String,
     pub image: String,
     pub cmd: String,
     pub mounts: Vec<Mount>,
@@ -94,7 +93,6 @@ pub struct RunBuildOptions<Env> {
 }
 
 pub struct BuildImageOptions<Env> {
-    pub build_id: String,
     pub image: String,
     pub dockerfile: PathBuf,
     pub context: PathBuf,
@@ -128,7 +126,7 @@ pub trait Containeriser {
         S: AsRef<str>;
 
     /// Reap any runaway containers
-    fn reap_containers(&self, build_id: &str) -> Result<(), cmd::Error>;
+    fn reap_containers(&self) -> Result<(), cmd::Error>;
 
     /// Pull a container image
     fn pull(&self, image: &str) -> Result<(), cmd::Error>;

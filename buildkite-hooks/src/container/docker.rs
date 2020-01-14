@@ -11,11 +11,15 @@ use crate::timeout::Timeout;
 pub const IMG_IMAGE: &str = "gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c";
 
 #[derive(Clone)]
-pub struct Docker {}
+pub struct Docker {
+    build_id: String,
+}
 
 impl Docker {
-    pub fn new() -> Self {
-        Docker {}
+    pub fn new(build_id: &str) -> Self {
+        Docker {
+            build_id: build_id.into(),
+        }
     }
 
     fn cmd(&self) -> Command {
@@ -23,9 +27,10 @@ impl Docker {
     }
 }
 
-impl Default for Docker {
-    fn default() -> Self {
-        Self::new()
+impl Drop for Docker {
+    fn drop(&mut self) {
+        self.reap_containers()
+            .unwrap_or_else(|e| eprintln!("Error reaping containers (in Drop): {}", e))
     }
 }
 
@@ -71,8 +76,8 @@ impl Containeriser for Docker {
             .arg("run")
             .arg("--tty")
             .arg("--rm")
-            .args(&["--name", &format!("build-{}", opts.build_id)])
-            .args(&["--label", &opts.build_id])
+            .args(&["--name", &format!("build-{}", &self.build_id)])
+            .args(&["--label", &self.build_id])
             .arg("--init")
             .arg("--read-only")
             .args(&["--user", &format!("{}={}", opts.uid, opts.gid)])
@@ -107,8 +112,8 @@ impl Containeriser for Docker {
             .arg("run")
             .arg("--tty")
             .arg("--rm")
-            .args(&["--name", &format!("img-{}", opts.build_id)])
-            .args(&["--label", &opts.build_id])
+            .args(&["--name", &format!("img-{}", self.build_id)])
+            .args(&["--label", &self.build_id])
             .arg("--init")
             .args(&[
                 "--security-opt=seccomp=unconfined",
@@ -156,7 +161,7 @@ impl Containeriser for Docker {
                 "--output",
                 &format!(
                     "type=docker,name={},dest=/tar/{}.tar",
-                    opts.image, opts.build_id
+                    opts.image, self.build_id
                 ),
             ])
             .arg(&opts.context.display().to_string())
@@ -167,7 +172,7 @@ impl Containeriser for Docker {
         self.cmd()
             .arg("load")
             .arg("--quiet")
-            .args(&["--input", &format!("/tmp/{}.tar", opts.build_id)])
+            .args(&["--input", &format!("/tmp/{}.tar", self.build_id)])
             .safe()?
             .timeout(timeout.remaining())
             .succeed()?;
@@ -180,12 +185,12 @@ impl Containeriser for Docker {
             .succeed()
     }
 
-    fn reap_containers(&self, build_id: &str) -> Result<(), cmd::Error> {
+    fn reap_containers(&self) -> Result<(), cmd::Error> {
         let mut ps = self.cmd();
         ps.args(&[
             "ps",
             "--filter",
-            &format!("label={}", build_id),
+            &format!("label={}", self.build_id),
             "--format",
             "{{.ID}}",
         ]);
