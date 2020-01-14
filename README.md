@@ -113,8 +113,8 @@ Repositories making using of this feature must:
 1. Create a new symmetric key in the GCP KMS.
 2. Grant the `cloudkms.cryptoKeyEncrypterDecrypter` IAM role to all contributors
    who should be able to view / modify the secrets.
-3. Grant the `cloudkms.cryptoKeyDecrypter` IAM role to the `buildkite-agent`
-   service account.
+3. Grant the `cloudkms.cryptoKeyDecrypter` IAM role to the
+   `buildkite-agent@opensourcecoin.iam.gserviceaccount.com` service account.
 4. Create a `.sops.yaml` file at the root of the repository, which specifies the
    GCP KMS key to use for encrypting / decrypting the `.buildkite/secrets.yaml`
    file. See [sops documentation](https://github.com/mozilla/sops#using-sops-yaml-conf-to-select-kms-pgp-for-new-files)

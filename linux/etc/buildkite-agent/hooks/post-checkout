@@ -1,4 +1,17 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-sudo chown -R buildkite-builder "${BUILDKITE_BUILD_CHECKOUT_PATH}"
+pushd "${BUILDKITE_BUILD_CHECKOUT_PATH}"
+
+if [[ -r .buildkite/secrets.yaml ]]
+then
+    GOOGLE_APPLICATION_CREDENTIALS=/etc/gce/cred.json \
+      sops \
+      --output-type dotenv \
+      --output .secrets \
+      --decrypt .buildkite/secrets.yaml
+fi
+
+sudo chown -R buildkite-builder .
+
+popd
