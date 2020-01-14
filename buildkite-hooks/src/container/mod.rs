@@ -1,5 +1,6 @@
 use std::fmt;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use users::{gid_t, uid_t};
 
@@ -7,6 +8,33 @@ use crate::cmd;
 use crate::timeout::Timeout;
 
 pub mod docker;
+
+#[derive(Clone, Debug)]
+pub enum VolumeDriver {
+    Local,
+    Zockervols,
+}
+
+impl FromStr for VolumeDriver {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "local" => Ok(Self::Local),
+            "zockervols" => Ok(Self::Zockervols),
+            _ => Err(format!("Unsupported volume driver {}", s)),
+        }
+    }
+}
+
+impl fmt::Display for VolumeDriver {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Local => f.write_str("local"),
+            Self::Zockervols => f.write_str("zockervols"),
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum Mount {
@@ -24,7 +52,7 @@ pub enum Mount {
         src: Option<Volume>,
         dst: PathBuf,
         readonly: bool,
-        volume_driver: Option<String>,
+        volume_driver: Option<VolumeDriver>,
         volume_opts: Vec<(String, String)>,
     },
 }
@@ -57,12 +85,12 @@ impl fmt::Display for Runtime {
 #[derive(Clone, Debug)]
 pub enum Volume {
     Ephemeral {
-        driver: Option<String>,
+        driver: Option<VolumeDriver>,
         opts: Vec<(String, String)>,
     },
     Persistent {
         name: String,
-        driver: Option<String>,
+        driver: Option<VolumeDriver>,
         opts: Vec<(String, String)>,
         labels: Vec<String>,
     },
@@ -70,14 +98,14 @@ pub enum Volume {
 
 impl Volume {
     /// Create a new ephemeral volume
-    pub fn new(driver: Option<String>, opts: Vec<(String, String)>) -> Self {
+    pub fn new(driver: Option<VolumeDriver>, opts: Vec<(String, String)>) -> Self {
         Self::Ephemeral { driver, opts }
     }
 }
 
 pub struct CreateVolumeOptions {
     pub name: String,
-    pub driver: Option<String>,
+    pub driver: Option<VolumeDriver>,
     pub volume_opts: Vec<(String, String)>,
     pub labels: Vec<String>,
 }

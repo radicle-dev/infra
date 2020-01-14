@@ -10,6 +10,8 @@ use url;
 use url::Url;
 use users::{get_group_by_name, get_user_by_name, Group, User};
 
+use crate::container::VolumeDriver;
+
 pub const MIN_TIMEOUT_MINUTES: u8 = 50;
 pub const MAX_TIMEOUT_MINUTES: u8 = 240;
 pub const MAX_BUILD_CACHE_QUOTA_GIB: u8 = 50;
@@ -56,6 +58,12 @@ pub struct Config {
         parse(from_os_str)
     )]
     pub google_application_credentials: GoogleApplicationCredentials,
+
+    /// Set the Docker volume driver.
+    ///
+    /// This is provided for local testing if ZFS is not available.
+    #[structopt(long, default_value = "zockervols")]
+    pub volume_driver: VolumeDriver,
 
     /// The docker image to use for running the build command
     #[structopt(long, env = "DOCKER_IMAGE")]

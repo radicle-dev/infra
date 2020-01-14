@@ -135,7 +135,7 @@ fn setup_volumes<C>(contained: &C, cfg: &Config) -> Result<VolumeMounts, Error>
 where
     C: Containeriser,
 {
-    let volume_driver = Some("zockervols".into());
+    let volume_driver = Some(cfg.volume_driver.clone());
 
     let cache_volume_prefix = format!(
         "cache_{}_{}_{}",

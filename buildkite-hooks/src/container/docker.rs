@@ -40,7 +40,12 @@ impl Containeriser for Docker {
             .arg("volume")
             .arg("create")
             .arg("--driver")
-            .arg(opts.driver.clone().unwrap_or_else(|| "local".into()))
+            .arg(
+                opts.driver
+                    .clone()
+                    .unwrap_or_else(|| VolumeDriver::Local)
+                    .to_string(),
+            )
             .args(
                 opts.volume_opts
                     .iter()
@@ -264,7 +269,7 @@ fn render_mount_arg(mount: &Mount) -> String {
 
             if let Some(driver) = volume_driver {
                 arg.push_str(",volume-driver=");
-                arg.push_str(driver);
+                arg.push_str(&driver.to_string());
             }
 
             for (k, v) in volume_opts {
