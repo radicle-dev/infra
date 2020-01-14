@@ -1,56 +1,15 @@
-use std::io;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use failure::Fail;
+use failure::{format_err, Error};
 use log::info;
 use paw;
 
-use buildkite_hooks::cmd;
 use buildkite_hooks::config::Config;
 use buildkite_hooks::container::docker::*;
 use buildkite_hooks::env;
 use buildkite_hooks::timeout::Timeout;
-
-#[derive(Debug, Fail)]
-enum Error {
-    #[fail(display = "Invalid container registry for image: {}", 0)]
-    InvalidImageRegistry(String),
-
-    #[fail(display = "No Dockerfile given")]
-    NoDockerFile,
-
-    #[fail(display = "No image name given")]
-    NoImageName,
-
-    #[fail(display = "{}", 0)]
-    Cmd(cmd::Error),
-
-    #[fail(display = "{}", 0)]
-    Sig(cmd::SignalsError),
-
-    #[fail(display = "{}", 0)]
-    Io(io::Error),
-}
-
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Self::Io(e)
-    }
-}
-
-impl From<cmd::Error> for Error {
-    fn from(e: cmd::Error) -> Self {
-        Self::Cmd(e)
-    }
-}
-
-impl From<cmd::SignalsError> for Error {
-    fn from(e: cmd::SignalsError) -> Self {
-        Self::Sig(e)
-    }
-}
 
 struct VolumeMounts {
     build_cache: Mount,
@@ -85,7 +44,7 @@ fn main(cfg: Config) -> Result<(), Error> {
         if cfg.is_agent_command() || image.starts_with("gcr.io/opensourcecoin/") {
             Ok(image)
         } else {
-            Err(Error::InvalidImageRegistry(image))
+            Err(format_err!("Invalid image registry {}", image))
         }
     }?;
 
@@ -104,9 +63,11 @@ fn main(cfg: Config) -> Result<(), Error> {
             cfg2.commit,
         );
 
-        cfg2.clone()
-            .build_container_dockerfile
-            .map_or(Err(Error::NoDockerFile), |dockerfile| {
+        cfg2.clone().build_container_dockerfile.map_or(
+            Err(format_err!(
+                "No Dockerfile given to build the build container with"
+            )),
+            |dockerfile| {
                 info!("Building build container image {}", build_container_image);
                 build_image(
                     &docker,
@@ -116,7 +77,8 @@ fn main(cfg: Config) -> Result<(), Error> {
                     &build_container_image,
                     &dockerfile,
                 )
-            })
+            },
+        )
     })?;
 
     // Run build command
@@ -158,8 +120,14 @@ fn main(cfg: Config) -> Result<(), Error> {
             )
         }
 
-        (None, Some(_)) => Err(Error::NoDockerFile),
-        (Some(_), None) => Err(Error::NoImageName),
+        (None, Some(image_name)) => Err(format_err!(
+            "No Dockerfile given to build {} with",
+            image_name
+        )),
+        (Some(dockerfile), None) => Err(format_err!(
+            "No image name given to build using Dockerfile {:?}",
+            dockerfile
+        )),
         (None, None) => Ok(()),
     }
 }
