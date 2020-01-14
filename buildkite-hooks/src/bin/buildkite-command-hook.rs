@@ -1,15 +1,13 @@
 use std::io;
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::Duration;
 
 use failure::Fail;
-use log::{debug, info};
+use log::info;
 use paw;
 
 use buildkite_hooks::cmd;
-use buildkite_hooks::cmd::CommandExt;
 use buildkite_hooks::config::Config;
 use buildkite_hooks::container::docker::*;
 use buildkite_hooks::env;
@@ -73,10 +71,6 @@ fn main(cfg: Config) -> Result<(), Error> {
 
     // Setup cache volumes
     let mounts = setup_volumes(&docker, &cfg)?;
-
-    // Unlock secrets
-    info!("Decrypting secrets");
-    decrypt_repo_secrets(&cfg)?;
 
     // Pull or build container image
     let mut build_container_image = {
@@ -167,27 +161,6 @@ fn main(cfg: Config) -> Result<(), Error> {
         (None, Some(_)) => Err(Error::NoDockerFile),
         (Some(_), None) => Err(Error::NoImageName),
         (None, None) => Ok(()),
-    }
-}
-
-fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
-    let secrets_yaml = cfg.checkout_path.join(".buildkite/secrets.yaml");
-    if secrets_yaml.exists() {
-        Command::new("sops")
-            .args(&[
-                "--output-type",
-                "dotenv",
-                "--output",
-                ".secrets",
-                "--decrypt",
-            ])
-            .arg(secrets_yaml)
-            .safe()?
-            .succeed()
-            .map_err(|e| e.into())
-    } else {
-        debug!("No .buildkite/secrets.yaml in repository");
-        Ok(())
     }
 }
 

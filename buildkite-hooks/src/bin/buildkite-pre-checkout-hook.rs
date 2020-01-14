@@ -1,55 +1,57 @@
 use std::fs;
-use std::io;
 use std::process::Command;
 
-use buildkite_hooks::cmd;
+use failure::Error;
+use log::{debug, info};
+use paw;
+
 use buildkite_hooks::cmd::CommandExt;
-use buildkite_hooks::env;
+use buildkite_hooks::config::{Config, GoogleApplicationCredentials};
 
-#[derive(Debug)]
-enum Error {
-    Var(env::VarError),
-    Io(io::Error),
-    Cmd(cmd::Error),
-    Sig(cmd::SignalsError),
-}
-
-impl From<env::VarError> for Error {
-    fn from(e: env::VarError) -> Self {
-        Self::Var(e)
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Self::Io(e)
-    }
-}
-
-impl From<cmd::Error> for Error {
-    fn from(e: cmd::Error) -> Self {
-        Self::Cmd(e)
-    }
-}
-
-impl From<cmd::SignalsError> for Error {
-    fn from(e: cmd::SignalsError) -> Self {
-        Self::Sig(e)
-    }
-}
-
-fn main() -> Result<(), Error> {
+#[paw::main]
+fn main(cfg: Config) -> Result<(), Error> {
     env_logger::init();
 
-    let checkout_path =
-        env::var_os("BUILDKITE_BUILD_CHECKOUT_PATH").ok_or(env::VarError::NotPresent)?;
+    decrypt_repo_secrets(&cfg)?;
+    fs::create_dir_all(&cfg.checkout_path)?;
+    own_checkout_path(&cfg)
+}
 
-    fs::create_dir_all(&checkout_path)?;
+fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
+    if cfg.is_trusted_build() {
+        info!("Decrypting secrets");
+        let secrets_yaml = cfg.checkout_path.join(".buildkite/secrets.yaml");
+        if secrets_yaml.exists() {
+            Command::new("sops")
+                .args(&[
+                    "--output-type",
+                    "dotenv",
+                    "--output",
+                    ".secrets",
+                    "--decrypt",
+                ])
+                .arg(secrets_yaml)
+                .safe()?
+                .succeed()
+                .map_err(|e| e.into())
+        } else {
+            debug!("No .buildkite/secrets.yaml in repository");
+            Ok(())
+        }
+    } else {
+        info!("Build secrets not available for unstrusted builds");
+        Ok(())
+    }
+}
 
-    Command::new("sudo")
+fn own_checkout_path(cfg: &Config) -> Result<(), Error> {
+    info!("Adjusting checkout path ownership");
+    let mut chown = Command::new("sudo");
+    chown
         .args(&["chown", "-R", "buildkite-agent"])
-        .arg(checkout_path)
-        .safe()?
-        .succeed()
-        .map_err(|e| e.into())
+        .arg(&cfg.checkout_path);
+    if let GoogleApplicationCredentials::Json(path) = &cfg.google_application_credentials {
+        chown.env("GOOGLE_APPLICATION_CREDENTIALS", path);
+    }
+    chown.safe()?.succeed().map_err(|e| e.into())
 }

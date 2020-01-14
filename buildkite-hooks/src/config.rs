@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::fmt;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -44,6 +45,17 @@ pub struct Config {
     /// The groupname to drop privileges to for build containers
     #[structopt(long, default_value = "buildkite-builder", parse(try_from_str = getgrnam))]
     pub builder_group: Group,
+
+    /// Path to the GCP service account credentials file.
+    ///
+    /// Empty value or the string "instance" to use instance credentials.
+    #[structopt(
+        long,
+        default_value = "/etc/gce/cred.json",
+        env = "GOOGLE_APPLICATION_CREDENTIALS",
+        parse(from_os_str)
+    )]
+    pub google_application_credentials: GoogleApplicationCredentials,
 
     /// The docker image to use for running the build command
     #[structopt(long, env = "DOCKER_IMAGE")]
@@ -262,4 +274,20 @@ fn getpwnam(username: &str) -> Result<User, IdMapError> {
 
 fn getgrnam(groupname: &str) -> Result<Group, IdMapError> {
     get_group_by_name(groupname).ok_or_else(|| IdMapError::NoSuchGroup(groupname.to_string()))
+}
+
+#[derive(Clone, Debug)]
+pub enum GoogleApplicationCredentials {
+    Instance,
+    Json(PathBuf),
+}
+
+impl From<&OsStr> for GoogleApplicationCredentials {
+    fn from(s: &OsStr) -> Self {
+        if s.is_empty() || s == "instance" {
+            Self::Instance
+        } else {
+            Self::Json(PathBuf::from(s))
+        }
+    }
 }
