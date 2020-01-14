@@ -189,18 +189,7 @@ impl Cmd {
                 Ok(vec![])
             }
 
-            Cmd::Unmount { vol } => {
-                let res = ZfsCmd::remove_mountpoint_of(&root.join(vol)).map(|()| vec![])?;
-
-                // Remove the mountpoint to prevent accidental use while not
-                // mounted. It's not an error if that fails.
-                let _ = {
-                    let mountpoint = ZfsCmd::get_mountpoint_of(root)?.join(vol);
-                    fs::remove_dir(mountpoint)
-                };
-
-                Ok(res)
-            }
+            Cmd::Unmount { vol } => ZfsCmd::remove_mountpoint_of(&root.join(vol)).map(|()| vec![]),
 
             Cmd::List => ZfsCmd::User.run(|zfs| {
                 zfs.arg("list")
@@ -291,9 +280,10 @@ impl ZfsCmd {
     }
 
     fn remove_mountpoint_of(dataset: &Path) -> Result<(), Error> {
-        Self::Sudo
-            .run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(dataset))
-            .map(|_| ())
+        let mountpoint = ZfsCmd::get_mountpoint_of(dataset)?;
+        Self::Sudo.run(|zfs| zfs.args(&["set", "mountpoint=none"]).arg(dataset))?;
+        fs::remove_dir(mountpoint)?;
+        Ok(())
     }
 }
 
