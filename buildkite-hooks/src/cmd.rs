@@ -130,10 +130,15 @@ impl<'a> Safe<'a> {
 pub struct SignalsError(#[fail(cause)] io::Error);
 
 pub trait CommandExt {
+    fn sudo() -> Command;
     fn safe(&'_ mut self) -> Result<Safe<'_>, SignalsError>;
 }
 
 impl CommandExt for Command {
+    fn sudo() -> Command {
+        Command::new("sudo")
+    }
+
     fn safe(&'_ mut self) -> Result<Safe<'_>, SignalsError> {
         let signals = Signals::new(&[SIGINT, SIGQUIT, SIGTERM]).map_err(SignalsError)?;
         Ok(Safe {

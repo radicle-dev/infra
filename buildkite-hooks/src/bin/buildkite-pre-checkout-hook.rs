@@ -46,7 +46,7 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
 
 fn own_checkout_path(cfg: &Config) -> Result<(), Error> {
     info!("Adjusting checkout path ownership");
-    let mut chown = Command::new("sudo");
+    let mut chown = Command::sudo();
     chown
         .args(&["chown", "-R", "buildkite-agent"])
         .arg(&cfg.checkout_path);
