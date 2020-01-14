@@ -13,7 +13,7 @@ pub enum Error {
     #[fail(display = "Child process killed by a signal, command was: {}", 0)]
     ChildKilled(CommandLine),
 
-    #[fail(display = "Non-zero exit status {} for command {}", 0, 1)]
+    #[fail(display = "Non-zero exit status {} for command {}", 1, 0)]
     NonZeroExitStatus(CommandLine, ExitStatus),
 
     #[fail(display = "{}", 0)]

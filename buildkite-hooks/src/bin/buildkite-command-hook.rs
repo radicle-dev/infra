@@ -136,6 +136,8 @@ fn setup_volumes<C>(contained: &C, cfg: &Config) -> Result<VolumeMounts, Error>
 where
     C: Containeriser,
 {
+    let volume_driver = Some("zockervols".into());
+
     let cache_volume_prefix = format!(
         "cache_{}_{}_{}",
         if cfg.shared_master_cache {
@@ -159,7 +161,7 @@ where
 
     let master_cache_volume = contained.create_volume(CreateVolumeOptions {
         name: master_cache_volume_name.clone(),
-        driver: Some("zockervols".into()),
+        driver: volume_driver.clone(),
         volume_opts: default_volume_opts.clone(),
         labels: vec![],
     })?;
@@ -170,7 +172,7 @@ where
         } else {
             contained.create_volume(CreateVolumeOptions {
                 name: format!("{}_{}", cache_volume_prefix, cfg.branch),
-                driver: Some("zockervols".into()),
+                driver: volume_driver.clone(),
                 volume_opts: iter::once(("from".into(), master_cache_volume_name))
                     .chain(default_volume_opts.iter().cloned())
                     .collect(),
@@ -182,7 +184,7 @@ where
             src: Some(cache_volume),
             dst: PathBuf::from("/cache"),
             readonly: false,
-            volume_driver: Some("zockervols".into()),
+            volume_driver: volume_driver.clone(),
             volume_opts: vec![],
         }
     } else {
@@ -190,7 +192,7 @@ where
             src: None,
             dst: PathBuf::from("/cache"),
             readonly: false,
-            volume_driver: Some("zockervols".into()),
+            volume_driver: volume_driver.clone(),
             volume_opts: default_volume_opts,
         }
     };
@@ -202,7 +204,7 @@ where
 
     let img_cache_volume = contained.create_volume(CreateVolumeOptions {
         name: img_cache_volume_name.clone(),
-        driver: Some("zockervols".into()),
+        driver: volume_driver.clone(),
         volume_opts: vec![
             ("exec".into(), "on".into()),
             ("setuid".into(), "on".into()),
@@ -224,7 +226,7 @@ where
             src: Some(img_cache_volume),
             dst: PathBuf::from("/cache"),
             readonly: false,
-            volume_driver: Some("zockervols".into()),
+            volume_driver,
             volume_opts: vec![("from".into(), img_cache_volume_name)],
         }
     };

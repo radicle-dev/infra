@@ -17,6 +17,10 @@ impl Docker {
     pub fn new() -> Self {
         Docker {}
     }
+
+    fn cmd(&self) -> Command {
+        Command::new("docker")
+    }
 }
 
 impl Default for Docker {
@@ -27,7 +31,7 @@ impl Default for Docker {
 
 impl Containeriser for Docker {
     fn create_volume(&self, opts: CreateVolumeOptions) -> Result<Volume, cmd::Error> {
-        Command::new("docker")
+        self.cmd()
             .arg("volume")
             .arg("create")
             .arg("--driver")
@@ -63,7 +67,7 @@ impl Containeriser for Docker {
         Env: Iterator<Item = (S, S)>,
         S: AsRef<str>,
     {
-        Command::new("docker")
+        self.cmd()
             .arg("run")
             .arg("--tty")
             .arg("--rm")
@@ -99,7 +103,7 @@ impl Containeriser for Docker {
         Env: Iterator<Item = (S, S)>,
         S: AsRef<str>,
     {
-        Command::new("docker")
+        self.cmd()
             .arg("run")
             .arg("--tty")
             .arg("--rm")
@@ -160,7 +164,7 @@ impl Containeriser for Docker {
             .timeout(timeout.remaining())
             .succeed()?;
 
-        Command::new("docker")
+        self.cmd()
             .arg("load")
             .arg("--quiet")
             .args(&["--input", &format!("/tmp/{}.tar", opts.build_id)])
@@ -168,7 +172,7 @@ impl Containeriser for Docker {
             .timeout(timeout.remaining())
             .succeed()?;
 
-        Command::new("docker")
+        self.cmd()
             .arg("push")
             .arg(opts.image)
             .safe()?
@@ -177,7 +181,7 @@ impl Containeriser for Docker {
     }
 
     fn reap_containers(&self, build_id: &str) -> Result<(), cmd::Error> {
-        let mut ps = Command::new("docker");
+        let mut ps = self.cmd();
         ps.args(&[
             "ps",
             "--filter",
@@ -201,23 +205,15 @@ impl Containeriser for Docker {
             .split(|x| x == &nl)
             .map(OsStr::from_bytes)
             .for_each(|container| {
-                let _ = Command::new("docker")
-                    .args(&[OsStr::new("kill"), container])
-                    .status();
-                let _ = Command::new("docker")
-                    .args(&[OsStr::new("rm"), container])
-                    .status();
+                let _ = self.cmd().args(&[OsStr::new("kill"), container]).status();
+                let _ = self.cmd().args(&[OsStr::new("rm"), container]).status();
             });
 
         Ok(())
     }
 
     fn pull(&self, image: &str) -> Result<(), cmd::Error> {
-        Command::new("docker")
-            .arg("pull")
-            .arg(image)
-            .safe()?
-            .succeed()
+        self.cmd().arg("pull").arg(image).safe()?.succeed()
     }
 }
 
