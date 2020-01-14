@@ -108,6 +108,8 @@ The build agent probes for a file `.buildkite/secrets.yaml` in the source
 checkout, and if it exists, attempts to decrypt it using [`sops`][sops] in
 "dotenv" format into a file `.secrets` at the root of the source checkout.
 
+Secrets are not available to pull requests builds.
+
 Repositories making using of this feature must:
 
 1. Create a new symmetric key in the GCP KMS.

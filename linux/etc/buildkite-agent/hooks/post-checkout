@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-pushd "${BUILDKITE_BUILD_CHECKOUT_PATH}"
+pushd "${BUILDKITE_BUILD_CHECKOUT_PATH}" >/dev/null
 
-if [[ -r .buildkite/secrets.yaml ]]
+if [[ -r .buildkite/secrets.yaml && ( "${BUILDKITE_PULL_REQUEST_REPO}" == "" || "${BUILDKITE_PULL_REQUEST_REPO}" =~ $TRUSTED_UPSTREAMS_REGEX ) ]];
 then
+    echo "Writing secrets to ./.secrets"
+
     GOOGLE_APPLICATION_CREDENTIALS=/etc/gce/cred.json \
       sops \
       --output-type dotenv \
@@ -12,6 +14,6 @@ then
       --decrypt .buildkite/secrets.yaml
 fi
 
-sudo chown -R buildkite-builder .
+popd >/dev/null
 
-popd
+sudo chown -R buildkite-builder "${BUILDKITE_BUILD_CHECKOUT_PATH}"
