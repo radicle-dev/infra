@@ -168,14 +168,17 @@ impl Cmd {
                     ZfsCmd::User.run(|zfs| zfs.args(&["destroy", "-r"]).arg(root.join(vol)))?;
 
                 // Clean up the mountpoint if we failed to do so when unmounting
-                let _ = {
+                {
                     let mountpoint = ZfsCmd::get_mountpoint_of(root)?.join(vol);
                     if mountpoint.exists() {
                         fs::remove_dir(mountpoint)
                     } else {
                         Ok(())
                     }
-                };
+                }
+                .unwrap_or_else(|e| {
+                    error!("Cmd::Destroy: failed to remove mount directory: {:?}", e)
+                });
 
                 Ok(res)
             }
@@ -287,6 +290,7 @@ impl ZfsCmd {
     }
 }
 
+#[derive(Debug)]
 pub enum Error {
     IoError(io::Error),
     VolInUseError(String, Vec<String>),
@@ -384,6 +388,7 @@ impl VolumeOptions {
     }
 }
 
+#[derive(Debug)]
 pub struct OptsError(&'static str);
 
 impl Display for OptsError {
@@ -582,23 +587,34 @@ impl From<Dataset> for Volume {
 impl VolumePlugin for Zfs {
     fn create(&self, rq: CreateRequest) -> Result<(), ErrorResponse> {
         info!("Volume.Create: {:?}", rq);
-        if self.exists(&rq.name)? {
-            Ok(())
-        } else {
-            self.do_create(&rq.name, rq.options.unwrap_or_default())
-                .map_err(|e| e.into())
+        {
+            if self.exists(&rq.name)? {
+                Ok(())
+            } else {
+                self.do_create(&rq.name, rq.options.unwrap_or_default())
+            }
         }
+        .map_err(|e| {
+            error!("Volume.Create: {:?}", e);
+            e.into()
+        })
     }
 
     fn remove(&self, rq: RemoveRequest) -> Result<(), ErrorResponse> {
         info!("Volume.Remove: {:?}", rq);
-        self.do_remove(&rq.name).map_err(|e| e.into())
+        self.do_remove(&rq.name).map_err(|e| {
+            error!("Volume.Remove: {:?}", e);
+            e.into()
+        })
     }
 
     fn mount(&self, rq: MountRequest) -> Result<MountResponse, ErrorResponse> {
         info!("Volume.Mount: {:?}", rq);
         self.do_mount(&rq.name, &rq.id)
-            .map_err(|e| e.into())
+            .map_err(|e| {
+                error!("Volume.Mount: {:?}", e);
+                e.into()
+            })
             .map(|mountpoint| MountResponse {
                 mountpoint: mountpoint.to_str().map(String::from).unwrap(),
             })
@@ -607,7 +623,10 @@ impl VolumePlugin for Zfs {
     fn path(&self, rq: PathRequest) -> Result<PathResponse, ErrorResponse> {
         info!("Volume.Path: {:?}", rq);
         self.get_mountpoint(&rq.name)
-            .map_err(|e| e.into())
+            .map_err(|e| {
+                error!("Volume.Path: {:?}", e);
+                e.into()
+            })
             .map(|mountpoint| PathResponse {
                 mountpoint: mountpoint.to_str().map(String::from).unwrap(),
             })
@@ -615,20 +634,29 @@ impl VolumePlugin for Zfs {
 
     fn unmount(&self, rq: UnmountRequest) -> Result<(), ErrorResponse> {
         info!("Volume.Unmount: {:?}", rq);
-        self.do_unmount(&rq.name, &rq.id).map_err(|e| e.into())
+        self.do_unmount(&rq.name, &rq.id).map_err(|e| {
+            error!("Volume.Unmount: {:?}", e);
+            e.into()
+        })
     }
 
     fn get(&self, rq: GetRequest) -> Result<GetResponse, ErrorResponse> {
         info!("Volume.Get: {:?}", rq);
         self.inspect(&rq.name)
-            .map_err(|e| e.into())
+            .map_err(|e| {
+                error!("Volume.Get: {:?}", e);
+                e.into()
+            })
             .map(|ds| GetResponse { volume: ds.into() })
     }
 
     fn list(&self) -> Result<ListResponse, ErrorResponse> {
         info!("Volume.List");
         self.inspect_all()
-            .map_err(|e| e.into())
+            .map_err(|e| {
+                error!("Volume.List: {:?}", e);
+                e.into()
+            })
             .map(|dss| ListResponse {
                 volumes: dss.into_iter().map(|ds| ds.into()).collect(),
             })
