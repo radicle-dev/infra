@@ -1,14 +1,17 @@
-use std::io;
-use std::process::{Child, Command, ExitStatus};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    io,
+    process::{Child, Command, ExitStatus},
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 
 use failure::Fail;
 use libc;
 use signal_hook::{iterator::Signals, SIGINT, SIGQUIT, SIGTERM};
 
 #[derive(Debug, Fail)]
+
 pub enum Error {
     #[fail(display = "Child process killed by a signal, command was: {}", 0)]
     ChildKilled(CommandLine),
@@ -24,16 +27,12 @@ pub enum Error {
 }
 
 impl From<SignalsError> for Error {
-    fn from(e: SignalsError) -> Self {
-        Self::Signals(e)
-    }
+    fn from(e: SignalsError) -> Self { Self::Signals(e) }
 }
 
 pub type CommandLine = String;
 
-pub fn command_line(cmd: &Command) -> CommandLine {
-    format!("{:?}", cmd)
-}
+pub fn command_line(cmd: &Command) -> CommandLine { format!("{:?}", cmd) }
 
 pub struct Safe<'a> {
     command: &'a mut Command,
@@ -44,6 +43,7 @@ pub struct Safe<'a> {
 impl<'a> Safe<'a> {
     pub fn timeout(mut self, after: Duration) -> Self {
         self.deadline = Instant::now().checked_add(after);
+
         self
     }
 
@@ -51,9 +51,13 @@ impl<'a> Safe<'a> {
         let process: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
 
         let debug = command_line(&self.command);
+
         let signals = self.signals.clone();
+
         let deadline = self.deadline;
+
         let process2 = process.clone();
+
         let handler = thread::spawn(move || loop {
             // Check if we've received any signals
             for signal in signals.pending() {
@@ -63,7 +67,7 @@ impl<'a> Safe<'a> {
                         if let Some(ref mut child) = &mut *process2.lock().unwrap() {
                             shutdown(child);
                         }
-                    }
+                    },
                     _ => unreachable!(),
                 }
             }
@@ -78,6 +82,7 @@ impl<'a> Safe<'a> {
                 if let Some(deadline) = deadline {
                     if Instant::now() > deadline {
                         shutdown(child);
+
                         return Err(io::Error::new(
                             io::ErrorKind::TimedOut,
                             format!(
@@ -98,12 +103,14 @@ impl<'a> Safe<'a> {
 
         self.command.spawn().and_then(|child| {
             *process.lock().unwrap() = Some(child);
+
             handler.join().expect("Command thread panicked")
         })
     }
 
     /// Run and wait for the command, and return unit if it terminates with a
     /// zero exit status, or an [`Error`] otherwise.
+
     pub fn succeed(&mut self) -> Result<(), Error> {
         self.status()
             .map_err(|e| Error::Io(command_line(self.command), e))
@@ -127,20 +134,21 @@ impl<'a> Safe<'a> {
 
 #[derive(Debug, Fail)]
 #[fail(display = "Failed to install signal handlers: {}", 0)]
+
 pub struct SignalsError(#[fail(cause)] io::Error);
 
 pub trait CommandExt {
     fn sudo() -> Command;
+
     fn safe(&'_ mut self) -> Result<Safe<'_>, SignalsError>;
 }
 
 impl CommandExt for Command {
-    fn sudo() -> Command {
-        Command::new("sudo")
-    }
+    fn sudo() -> Command { Command::new("sudo") }
 
     fn safe(&'_ mut self) -> Result<Safe<'_>, SignalsError> {
         let signals = Signals::new(&[SIGINT, SIGQUIT, SIGTERM]).map_err(SignalsError)?;
+
         Ok(Safe {
             command: self,
             signals,
@@ -151,6 +159,8 @@ impl CommandExt for Command {
 
 fn shutdown(child: &mut Child) {
     unsafe { libc::kill(child.id() as i32, libc::SIGTERM) };
+
     thread::sleep(Duration::from_millis(500));
+
     let _ = child.kill();
 }

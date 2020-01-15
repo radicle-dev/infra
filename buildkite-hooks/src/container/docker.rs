@@ -1,16 +1,13 @@
-use std::ffi::OsStr;
-use std::os::unix::ffi::OsStrExt;
-use std::path::PathBuf;
-use std::process::Command;
+use std::{ffi::OsStr, os::unix::ffi::OsStrExt, path::PathBuf, process::Command};
 
-use crate::cmd;
-use crate::cmd::CommandExt;
 pub use crate::container::*;
-use crate::timeout::Timeout;
+use crate::{cmd, cmd::CommandExt, timeout::Timeout};
 
-pub const IMG_IMAGE: &str = "gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c";
+pub const IMG_IMAGE: &str = "gcr.io/opensourcecoin/img@sha256:\
+                             6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c";
 
 #[derive(Clone)]
+
 pub struct Docker {
     build_id: String,
 }
@@ -22,9 +19,7 @@ impl Docker {
         }
     }
 
-    fn cmd(&self) -> Command {
-        Command::new("docker")
-    }
+    fn cmd(&self) -> Command { Command::new("docker") }
 }
 
 impl Drop for Docker {
@@ -78,6 +73,7 @@ impl Containeriser for Docker {
         S: AsRef<str>,
     {
         let mut docker = self.cmd();
+
         docker
             .arg("run")
             .arg("--tty")
@@ -206,6 +202,7 @@ impl Containeriser for Docker {
 
     fn reap_containers(&self) -> Result<(), cmd::Error> {
         let mut ps = self.cmd();
+
         ps.args(&[
             "ps",
             "--filter",
@@ -213,6 +210,7 @@ impl Containeriser for Docker {
             "--format",
             "{{.ID}}",
         ]);
+
         let out = ps
             .output()
             .map_err(|e| cmd::Error::Io(cmd::command_line(&ps), e))?;
@@ -225,11 +223,13 @@ impl Containeriser for Docker {
         }
 
         let nl: u8 = 10;
+
         out.stdout
             .split(|x| x == &nl)
             .map(OsStr::from_bytes)
             .for_each(|container| {
                 let _ = self.cmd().args(&[OsStr::new("kill"), container]).status();
+
                 let _ = self.cmd().args(&[OsStr::new("rm"), container]).status();
             });
 
@@ -259,11 +259,13 @@ fn render_mount_arg(mount: &Mount) -> String {
                 src.display(),
                 dst.display()
             );
+
             if *readonly {
                 arg.push_str(",readonly");
             }
+
             arg
-        }
+        },
         Mount::Volume {
             src,
             dst,
@@ -283,6 +285,7 @@ fn render_mount_arg(mount: &Mount) -> String {
 
             if let Some(driver) = volume_driver {
                 arg.push_str(",volume-driver=");
+
                 arg.push_str(&driver.to_string());
             }
 
@@ -291,6 +294,6 @@ fn render_mount_arg(mount: &Mount) -> String {
             }
 
             arg
-        }
+        },
     }
 }

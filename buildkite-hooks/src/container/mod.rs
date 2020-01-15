@@ -1,15 +1,13 @@
-use std::fmt;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{fmt, path::PathBuf, str::FromStr};
 
 use users::{gid_t, uid_t};
 
-use crate::cmd;
-use crate::timeout::Timeout;
+use crate::{cmd, timeout::Timeout};
 
 pub mod docker;
 
 #[derive(Clone, Debug)]
+
 pub enum VolumeDriver {
     Local,
     Zockervols,
@@ -37,6 +35,7 @@ impl fmt::Display for VolumeDriver {
 }
 
 #[derive(Clone, Debug)]
+
 pub enum Mount {
     Tmpfs {
         dst: PathBuf,
@@ -68,6 +67,7 @@ impl Mount {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+
 pub enum Runtime {
     Runc,
     Kata,
@@ -83,6 +83,7 @@ impl fmt::Display for Runtime {
 }
 
 #[derive(Clone, Debug)]
+
 pub enum Volume {
     Ephemeral {
         driver: Option<VolumeDriver>,
@@ -98,6 +99,7 @@ pub enum Volume {
 
 impl Volume {
     /// Create a new ephemeral volume
+
     pub fn new(driver: Option<VolumeDriver>, opts: Vec<(String, String)>) -> Self {
         Self::Ephemeral { driver, opts }
     }
@@ -131,9 +133,11 @@ pub struct BuildImageOptions<Env> {
 
 pub trait Containeriser {
     /// Create a persistent volume
+
     fn create_volume(&self, opts: CreateVolumeOptions) -> Result<Volume, cmd::Error>;
 
     /// Run the build command `cmd` in a container
+
     fn run_build<Env, S>(
         &self,
         opts: RunBuildOptions<Env>,
@@ -144,6 +148,7 @@ pub trait Containeriser {
         S: AsRef<str>;
 
     /// Build a container image
+
     fn build_image<Env, S>(
         &self,
         opts: BuildImageOptions<Env>,
@@ -154,8 +159,10 @@ pub trait Containeriser {
         S: AsRef<str>;
 
     /// Reap any runaway containers
+
     fn reap_containers(&self) -> Result<(), cmd::Error>;
 
     /// Pull a container image
+
     fn pull(&self, image: &str) -> Result<(), cmd::Error>;
 }

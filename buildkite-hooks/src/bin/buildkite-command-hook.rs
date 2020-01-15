@@ -1,15 +1,14 @@
-use std::iter;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::{
+    iter,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use failure::{format_err, Error};
 use log::info;
 use paw;
 
-use buildkite_hooks::config::Config;
-use buildkite_hooks::container::docker::*;
-use buildkite_hooks::env;
-use buildkite_hooks::timeout::Timeout;
+use buildkite_hooks::{config::Config, container::docker::*, env, timeout::Timeout};
 
 struct VolumeMounts {
     build_cache: Mount,
@@ -20,12 +19,14 @@ struct VolumeMounts {
 }
 
 #[paw::main]
+
 fn main(cfg: Config) -> Result<(), Error> {
     env_logger::init();
 
     let cfg = cfg.valid();
 
     let docker = Docker::new(&cfg.command_id());
+
     let timeout = Timeout::new(Duration::from_secs(cfg.timeout_minutes as u64 * 60));
 
     // Setup cache volumes
@@ -49,11 +50,14 @@ fn main(cfg: Config) -> Result<(), Error> {
     }?;
 
     info!("Pulling docker image {}", build_container_image);
+
     let cfg2 = cfg.clone(); // prevent move into closure
     docker.pull(&build_container_image).or_else(|e| {
         info!("Failed to pull image {}: {}", build_container_image, e);
+
         // Re-tag with current commit
         let colon = ':';
+
         build_container_image = format!(
             "{}:{}",
             build_container_image
@@ -69,6 +73,7 @@ fn main(cfg: Config) -> Result<(), Error> {
             )),
             |dockerfile| {
                 info!("Building build container image {}", build_container_image);
+
                 build_image(
                     &docker,
                     &cfg2,
@@ -83,6 +88,7 @@ fn main(cfg: Config) -> Result<(), Error> {
 
     // Run build command
     info!("Running build command");
+
     docker.run_build(
         RunBuildOptions {
             image: build_container_image,
@@ -109,6 +115,7 @@ fn main(cfg: Config) -> Result<(), Error> {
     match (&cfg.step_container_dockerfile, &cfg.step_container_image) {
         (Some(ref dockerfile), Some(ref image_name)) => {
             info!("Building step container image {}", image_name);
+
             build_image(
                 &docker,
                 &cfg,
@@ -117,7 +124,7 @@ fn main(cfg: Config) -> Result<(), Error> {
                 &image_name,
                 &dockerfile,
             )
-        }
+        },
 
         (None, Some(image_name)) => Err(format_err!(
             "No Dockerfile given to build {} with",

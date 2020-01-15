@@ -1,24 +1,24 @@
-use std::ffi::OsStr;
-use std::fmt;
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{ffi::OsStr, fmt, ops::Deref, path::PathBuf, str::FromStr};
 
 use failure::Fail;
 use structopt::StructOpt;
-use url;
-use url::Url;
+use url::{self, Url};
 use users::{get_group_by_name, get_user_by_name, Group, User};
 
 use crate::container::VolumeDriver;
 
 pub const MIN_TIMEOUT_MINUTES: u8 = 50;
+
 pub const MAX_TIMEOUT_MINUTES: u8 = 240;
+
 pub const MAX_BUILD_CACHE_QUOTA_GIB: u8 = 50;
+
 pub const MAX_IMG_CACHE_QUOTA_GIB: u8 = 50;
+
 pub const MAX_TMP_SIZE_BYTES: u32 = 500_000_000;
 
 #[derive(Clone, Debug, StructOpt)]
+
 pub struct Config {
     /// Comma-separated list of GitHub organisations considered "trusted"
     #[structopt(long, default_value = "monadic-xyz,oscoin,radicle-dev")]
@@ -69,22 +69,23 @@ pub struct Config {
     #[structopt(long, env = "DOCKER_IMAGE")]
     pub build_container_image: Option<String>,
 
-    /// Path to the Dockerfile (relative to the source repo) to use for building the
-    /// build-container-image on CI
+    /// Path to the Dockerfile (relative to the source repo) to use for building
+    /// the build-container-image on CI
     #[structopt(long, env = "DOCKER_FILE", parse(from_os_str))]
     pub build_container_dockerfile: Option<PathBuf>,
 
-    /// The fully-qualified name of a docker image to build as part of a build step
+    /// The fully-qualified name of a docker image to build as part of a build
+    /// step
     #[structopt(long, env = "STEP_DOCKER_IMAGE")]
     pub step_container_image: Option<String>,
 
-    /// Path to the Dockerfile (relative to the source repo) to use for building the
-    /// step-container-image
+    /// Path to the Dockerfile (relative to the source repo) to use for building
+    /// the step-container-image
     #[structopt(long, env = "STEP_DOCKER_FILE", parse(from_os_str))]
     pub step_container_dockerfile: Option<PathBuf>,
 
-    /// Path to the directory (relative to the source repo) to use as the build context for
-    /// step-container-image
+    /// Path to the directory (relative to the source repo) to use as the build
+    /// context for step-container-image
     #[structopt(long, env = "STEP_DOCKER_CONTEXT", parse(from_os_str))]
     pub step_container_context: Option<PathBuf>,
 
@@ -179,8 +180,11 @@ impl Config {
         // building.
         if self.is_agent_command() {
             self.build_container_image = Some("alpine".into());
+
             self.build_container_dockerfile = None;
+
             self.step_container_image = None;
+
             self.step_container_dockerfile = None;
         }
 
@@ -188,16 +192,14 @@ impl Config {
     }
 
     /// A unique ID per `command` hook invocation
-    pub fn command_id(&self) -> String {
-        format!("{}-{}", self.build_id, self.step_id)
-    }
 
-    pub fn is_agent_command(&self) -> bool {
-        self.build_command.starts_with("buildkite-agent")
-    }
+    pub fn command_id(&self) -> String { format!("{}-{}", self.build_id, self.step_id) }
+
+    pub fn is_agent_command(&self) -> bool { self.build_command.starts_with("buildkite-agent") }
 
     pub fn is_trusted_build(&self) -> bool {
         let trusted_orgs = &self.trusted_github_orgs.0;
+
         if is_trusted_github_url(&self.upstream_repo, &trusted_orgs) {
             match &self.pull_request_repo.deref() {
                 None => true,
@@ -210,6 +212,7 @@ impl Config {
 }
 
 #[derive(Clone)]
+
 pub struct CommaSepVec(Vec<String>);
 
 impl FromStr for CommaSepVec {
@@ -221,12 +224,11 @@ impl FromStr for CommaSepVec {
 }
 
 impl fmt::Debug for CommaSepVec {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }
 }
 
 #[derive(Clone)]
+
 pub struct MaybeEmpty<T>(Option<T>);
 
 impl<T: FromStr> FromStr for MaybeEmpty<T> {
@@ -242,17 +244,13 @@ impl<T: FromStr> FromStr for MaybeEmpty<T> {
 }
 
 impl<T: fmt::Debug> fmt::Debug for MaybeEmpty<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }
 }
 
 impl<T> Deref for MaybeEmpty<T> {
     type Target = Option<T>;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 pub fn is_trusted_github_url(url: &Url, trusted_orgs: &[String]) -> bool {
@@ -268,6 +266,7 @@ pub fn is_trusted_github_url(url: &Url, trusted_orgs: &[String]) -> bool {
 }
 
 #[derive(Debug, Fail)]
+
 enum IdMapError {
     #[fail(display = "No such user {}", 0)]
     NoSuchUser(String),
@@ -285,6 +284,7 @@ fn getgrnam(groupname: &str) -> Result<Group, IdMapError> {
 }
 
 #[derive(Clone, Debug)]
+
 pub enum GoogleApplicationCredentials {
     Instance,
     Json(PathBuf),

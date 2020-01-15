@@ -1,5 +1,5 @@
 env:
-  DOCKER_IMAGE: "gcr.io/opensourcecoin/buildkite-hooks-build@sha256:0c453a56f4742ae03ef18f23fe2b45bb923d2737f5b547285818ddf5ca25af19"
+  DOCKER_IMAGE: "gcr.io/opensourcecoin/buildkite-hooks-build@sha256:6bd0bdaaf39375d10bffae5dd7306546b152b7daa88258273b2d70972fac3b3e"
   DOCKER_FILE: .docker/rust/Dockerfile
 
 steps:
