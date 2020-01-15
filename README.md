@@ -2,6 +2,14 @@
 CI infrastructure
 
 ## Linux build agents
+
+### Build step environment
+
+For each step we mount the [buildkite agent][buildkite-agent] to
+`/bin/buildkite-agent` in the Docker container.
+
+[buildkite-agent]: https://buildkite.com/docs/agent/v3
+
 ### Caching
 
 Each job container has a cache volume mounted at `/cache`. In general, the cache
