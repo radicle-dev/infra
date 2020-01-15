@@ -77,13 +77,13 @@ impl Containeriser for Docker {
         Env: Iterator<Item = (S, S)>,
         S: AsRef<str>,
     {
-        self.cmd()
+        let mut docker = self.cmd();
+        docker
             .arg("run")
             .arg("--tty")
             .arg("--rm")
             .args(&["--name", &format!("build-{}", &self.build_id)])
             .args(&["--label", &self.build_id])
-            .arg("--init")
             .arg("--read-only")
             .args(&["--user", &format!("{}={}", opts.uid, opts.gid)])
             .arg("--cap-drop=ALL")
@@ -96,7 +96,21 @@ impl Containeriser for Docker {
                 opts.env
                     .map(|(k, v)| vec!["--env".into(), format!("{}={}", k.as_ref(), v.as_ref())])
                     .flatten(),
-            )
+            );
+
+        // Don't use a PID1 with kata due to
+        // https://github.com/kata-containers/runtime/issues/1901
+        //
+        // The main reason we want a PID1 is to be able to interrupt builds by
+        // sending a signal to the docker _client_ (assuming the PID1 forwards
+        // it properly). We hope for now that the [`Drop`] impl for [`Docker`]
+        // will solve this anyway. Otherwise we'll need to jump through some
+        // hoops to provide a CoW'ed tini to kata containers.
+        if opts.runtime != Runtime::Kata {
+            docker.arg("--init");
+        }
+
+        docker
             .arg(opts.image)
             .args(&["/bin/sh", "-e", "-c", &opts.cmd])
             .safe()?

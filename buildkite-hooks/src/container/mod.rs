@@ -67,7 +67,7 @@ impl Mount {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Runtime {
     Runc,
     Kata,
