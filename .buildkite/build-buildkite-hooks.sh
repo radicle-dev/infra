@@ -6,6 +6,9 @@ pushd buildkite-hooks
 version="$(cargo read-manifest|jq -r .version)+${BUILDKITE_BUILD_NUMBER}"
 deb="buildkite-hooks_${version}_amd64.deb"
 
+echo "--- obey the stylez"
+cargo fmt -- --check
+
 echo "--- cargo test"
 cargo test --all
 
