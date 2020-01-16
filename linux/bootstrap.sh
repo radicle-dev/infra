@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
-declare -r VERSION="${__VERSION}"
 declare -ra STORAGE_DEVICES=("${__STORAGE_DEVICES}")
-declare -r CONFIG_BUCKET="${__CONFIG_BUCKET}"
 
 apt_keys() {
     # FIXME:
@@ -124,40 +122,13 @@ storage() {
     chmod 775 /mnt/builds
 }
 
-config() {
-    local config_tarball="buildkite-agent-${VERSION}.tar.gz"
-
-    set -x
-    gsutil cp "gs://${CONFIG_BUCKET}/${config_tarball}" /root
-
-    tar -C / -xvf "/root/${config_tarball}"
-
-    while IFS= read -r -d '' ciph
-    do
-        base64 --decode -i "$ciph" \
-        | gcloud kms decrypt \
-            --keyring=buildkite \
-            --key=bootstrap \
-            --location=global \
-            --ciphertext-file=- \
-            --plaintext-file="${ciph%.asc}"
-    done < <(find /etc -type f -name "*.asc" -print0)
-
-    chmod 440 /etc/gce/*
-    chgrp buildkite-agent /etc/gce/*
-
-    chown -R root:root /etc/systemd/system
-    find /etc/systemd/system -type f -exec chmod 644 {} \;
-
-    set +x
-}
-
 docker_gcr_auth() {
     set -x
+    sops --decrypt --in-place /etc/gce/buildkite-agent.json
     sudo -u buildkite-agent gcloud auth configure-docker --quiet
     sudo -u buildkite-agent gcloud auth activate-service-account \
         buildkite-agent@opensourcecoin.iam.gserviceaccount.com \
-        --key-file=/etc/gce/cred.json \
+        --key-file=/etc/gce/buildkite-agent.json \
         --quiet
     set +x
 }
@@ -190,36 +161,6 @@ users_groups() {
     set +x
 }
 
-services() {
-    local units=(
-        docker
-        zockervols.socket
-    )
-
-    local -i cpus agents
-
-    cpus=$(nproc)
-    cpus=$((cpus < 2 ? 2 : cpus))
-
-    agents=$((cpus / 2))
-    for i in $(seq 0 $((agents - 1)))
-    do
-        units+=("buildkite-agent@${i}")
-    done
-
-    set -x
-    systemctl daemon-reload
-
-    for unit in "${units[@]}"
-    do
-        for cmd in enable restart
-        do
-            systemctl $cmd "$unit"
-        done
-    done
-    set +x
-}
-
 metadata_concealment() {
     local rule=(
         "--in-interface=docker0"
@@ -242,11 +183,6 @@ main() {
     users_groups
 
     echo
-    echo 'Static Configuration'
-    echo
-    config
-
-    echo
     echo 'apt Setup'
     echo
     apt_keys
@@ -266,11 +202,6 @@ main() {
     echo 'Docker GCR Auth'
     echo
     docker_gcr_auth
-
-    echo
-    echo 'systemd Services'
-    echo
-    services
 
     echo
     echo 'Metadata Concealment'

@@ -53,7 +53,7 @@ pub struct Config {
     /// Empty value or the string "instance" to use instance credentials.
     #[structopt(
         long,
-        default_value = "/etc/gce/cred.json",
+        default_value = "/etc/gce/buildkite-agent.json",
         env = "GOOGLE_APPLICATION_CREDENTIALS",
         parse(from_os_str)
     )]
