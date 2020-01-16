@@ -284,14 +284,16 @@ fn render_mount_arg(mount: &Mount) -> String {
             }
 
             if let Some(driver) = volume_driver {
-                arg.push_str(",volume-driver=");
-
-                arg.push_str(&driver.to_string());
+                arg.push_str(&format!(",volume-driver={}", driver));
             }
 
             for (k, v) in volume_opts {
                 arg.push_str(&format!(",volume-opt={}={}", k, v));
             }
+
+            // Prevent existing data at the image mountpoint to mess up
+            // permissions. See #41
+            arg.push_str(",volume-nocopy=true");
 
             arg
         },
