@@ -195,7 +195,10 @@ impl Config {
 
     pub fn command_id(&self) -> String { format!("{}-{}", self.build_id, self.step_id) }
 
-    pub fn is_agent_command(&self) -> bool { self.build_command.starts_with("buildkite-agent") }
+    pub fn is_agent_command(&self) -> bool {
+        self.build_command
+            .starts_with("buildkite-agent pipeline upload")
+    }
 
     pub fn is_trusted_build(&self) -> bool {
         let trusted_orgs = &self.trusted_github_orgs.0;
