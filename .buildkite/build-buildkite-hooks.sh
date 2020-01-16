@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eou pipefail
+set -eoux pipefail
 
 pushd buildkite-hooks
 
@@ -21,6 +21,7 @@ cargo deb --deb-version="${version}"
 
 if [[ "$BUILDKITE_BRANCH" == "master" ]]
 then
+    set +x
     echo "--- Uploading ${deb} to bintray"
     curl -f \
         -T "target/debian/${deb}"  \
