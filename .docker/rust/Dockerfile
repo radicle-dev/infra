@@ -8,6 +8,13 @@ ENV CARGO_HOME=/usr/local/cargo \
 # Make sure this is in sync with buildkite-hooks/rust-toolchain!
 ENV RUST_VERSION=nightly-2019-09-05
 
+# This is where CI mounts the persistent cache
+VOLUME /cache
+
+# rustup will dial home when using nightly, and create temp files here. Since CI
+# mounts the rootfs read-only, we need to make sure it can write to this path.
+VOLUME /usr/local/cargo/tmp
+
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
@@ -37,8 +44,6 @@ RUN set -eux; \
     rm -rf /usr/local/cargo/registry; \
     rm /usr/local/cargo/.package-cache;
 
-# Setup defaults for caching
-VOLUME /cache
 ENV SCCACHE_DIR=/cache/sccache \
     RUSTC_WRAPPER=sccache \
     CARGO_HOME=/cache/cargo
