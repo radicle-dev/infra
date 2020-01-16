@@ -1,0 +1,3 @@
+creation_rules:
+- path_regex: buildkite-hooks/.*
+  gcp_kms: projects/opensourcecoin/locations/global/keyRings/buildkite/cryptoKeys/service

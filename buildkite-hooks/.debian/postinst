@@ -38,4 +38,7 @@ services() {
     done
 }
 
+sops --decrypt --in-place /etc/buildkite-hooks/secrets.env
+sops --decrypt --in-place /etc/systemd/system/buildkite-agent@.service.d/token.env
+
 services

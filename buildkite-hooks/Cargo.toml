@@ -25,7 +25,7 @@ users = "0.9"
 [package.metadata.deb]
 maintainer = "Monadic GmbH <team@monadic.xyz>"
 copyright = "2020 Kim Altintop, Monadic GmbH"
-depends = "$auto, docker-ce"
+depends = "$auto, buildkite-agent, containerd.io, docker-ce-cli, kata-proxy, kata-runtime, kata-shim, sops, zockervols"
 priority = "optional"
 maintainer-scripts = ".debian"
 assets = [
@@ -35,9 +35,16 @@ assets = [
     ["target/release/buildkite-pre-exit-hook", "var/lib/buildkite-hooks/bin/", "755"],
 
     ["etc/buildkite-hooks/buildkite-agent.cfg", "etc/buildkite-hooks/buildkite-agent.cfg", "644"],
+    ["etc/buildkite-hooks/secrets.env", "etc/buildkite-hooks/secrets.env", "644"],
+
     ["etc/systemd/system/*.service", "etc/systemd/system/", "644"],
     ["etc/systemd/system/*.timer", "etc/systemd/system/", "644"],
     ["etc/systemd/system/*.sh", "etc/systemd/system/", "744"],
+    ["etc/systemd/system/buildkite-agent@.service.d/local.conf", "etc/systemd/system/buildkite-agent@.service.d/local.conf", "644"],
+    ["etc/systemd/system/buildkite-agent@.service.d/token.env", "etc/systemd/system/buildkite-agent@.service.d/token.env", "640"],
+    ["etc/systemd/system/zockervols.service.d/local.conf", "etc/systemd/system/zockervols.service.d/local.conf", "644"],
+
     ["etc/sudoers.d/buildkite", "etc/sudoers.d/buildkite", "440"],
+
     ["etc/docker/daemon.json", "etc/docker/daemon.json", "644"]
 ]
