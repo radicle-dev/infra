@@ -48,7 +48,7 @@ then
         if [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
         then
             # Use and mutate the master cache
-            export DOCKER_CACHE_MOUNT="type=volume,src=${master_cache_volume},dst=/cache,volume-driver=zockervols"
+            declare -r cache_volume="${master_cache_volume}"
         else
             # Create a branch cache from master, labelled for later pruning
             declare -r branch_cache_volume="${cache_volume_prefix}_${BUILDKITE_BRANCH}"
@@ -59,8 +59,10 @@ then
                 --opt="quota=${CACHE_QUOTA_GiB}GiB" \
                 --opt="exec=on" \
                 "$branch_cache_volume"
-            export DOCKER_CACHE_MOUNT="type=volume,src=${branch_cache_volume},dst=/cache,volume-driver=zockervols"
+            declare -r cache_volume="${branch_cache_volume}"
         fi
+
+        export DOCKER_CACHE_MOUNT="type=volume,src=${cache_volume},dst=/cache,volume-driver=zockervols,volume-nocopy=true"
 
         # FIXME: can we ensure somehow that all variables in secrets_file are
         # prefixed by `SECRET_`?
