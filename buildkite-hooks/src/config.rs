@@ -258,7 +258,7 @@ impl<T> Deref for MaybeEmpty<T> {
 
 pub fn is_trusted_github_url(url: &Url, trusted_orgs: &[String]) -> bool {
     if url.host_str() == Some("github.com") {
-        if let Some(Some(org)) = url.path_segments().map(|mut ps| ps.nth(0)) {
+        if let Some(Some(org)) = url.path_segments().map(|mut ps| ps.next()) {
             trusted_orgs.iter().any(|x| x == org)
         } else {
             false

@@ -12,7 +12,7 @@ use buildkite_hooks::cmd::CommandExt;
 fn main() {
     let mut argv = args().skip(1);
 
-    if let Some(cmd) = argv.nth(0) {
+    if let Some(cmd) = argv.next() {
         match Command::new(cmd)
             .args(argv)
             .safe()
