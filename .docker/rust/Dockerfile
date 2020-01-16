@@ -6,14 +6,10 @@ ENV CARGO_HOME=/usr/local/cargo \
     RUSTUP_VERSION=1.21.1 \
     RUSTUP_SHA256=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
 # Make sure this is in sync with buildkite-hooks/rust-toolchain!
-ENV RUST_VERSION=nightly-2019-09-05
+ENV RUST_VERSION=nightly-2020-01-08
 
 # This is where CI mounts the persistent cache
 VOLUME /cache
-
-# rustup will dial home when using nightly, and create temp files here. Since CI
-# mounts the rootfs read-only, we need to make sure it can write to this path.
-VOLUME /usr/local/cargo/tmp
 
 RUN set -eux; \
     apt-get update; \
