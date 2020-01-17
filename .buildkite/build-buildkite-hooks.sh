@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -eoux pipefail
 
-pushd buildkite-hooks
-
 version="$(cargo read-manifest|jq -r .version)+${BUILDKITE_BUILD_NUMBER}"
 deb="buildkite-hooks_${version}_amd64.deb"
 
@@ -38,5 +36,3 @@ then
        "https://api.bintray.com/content/oscoin/buildkite-hooks/buildkite-hooks/${version}/publish"
     echo
 fi
-
-popd

@@ -1,0 +1,35 @@
+#cloud-config
+
+groups:
+- 'buildkite-agent'
+- 'buildkite-builder'
+- docker
+
+users:
+- default
+- name: 'buildkite-agent'
+  primary_group: 'buildkite-agent'
+  groups: docker,buildkite-builder
+  homedir: /var/lib/buildkite-agent
+- name: 'buildkite-builder'
+  primary_group: 'buildkite-builder'
+  system: true
+
+apt:
+  sources:
+    buildkite-agent.list:
+      source: 'deb https://apt.buildkite.com/buildkite-agent stable main'
+      keyid: 32A37959C2FA5C3C99EFBC32A79206696452D198
+    docker.list:
+      source: 'deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable'
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    google-cloud-sdk.list: 'deb http://packages.cloud.google.com/apt cloud-sdk main'
+      keyid: 54A647F9048D5688D7DA2ABE6A030B21BA07F4FB
+    kata-containers.list: 'deb http://download.opensuse.org/repositories/home:/katacontainers:/releases:/x86_64:/master/xUbuntu_bionic/ /'
+      keyid: 9FDC0CB63708CF803696E2DCD0B37B826063F3ED
+    sops.list: 'deb https://dl.bintray.com/oscoin/sops buster main'
+      keyid: 8756C4F765C9AC3CB6B85D62379CE192D401AB61
+    zockervols.list: 'deb https://dl.bintray.com/oscoin/zockervols buster main'
+      keyid: 8756C4F765C9AC3CB6B85D62379CE192D401AB61
+    buildkite-hooks.list: 'deb https://dl.bintray.com/oscoin/buildkite-hooks buster main'
+      keyid: 8756C4F765C9AC3CB6B85D62379CE192D401AB61
