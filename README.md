@@ -128,10 +128,10 @@ Repositories making using of this feature must:
 
 ## macOS build agents
 
-For now we have one macOS host: a 2018 6-core i5 Mac mini (19C57) with
+For now we have one macOS host, a 2018 6-core i5 Mac mini (19C57) with
 32Gb RAM and a 256GB SSD.
 
-For security reasons it is configured to only build the master branch of the
+For security reasons it is configured to only build the `master` branch of the
 official `radicle-upstream` repository at the moment.
 
 
@@ -143,13 +143,14 @@ official `radicle-upstream` repository at the moment.
    call the user: `buildkite`
 
 3. Set up remote access via screen sharing
-   `System Preferences` → `Sharing` → Check [x] Screen Sharing
+   `System Preferences` → `Sharing` → Check
+   - [x] Screen Sharing
 
    The host will be reachable from any other Mac on the local network via the
    built-in Screen Sharing app.
 
-4. Set up remote access via SSH via `System Preferences` → `Sharing`
-   → Check [x] Remote Login and add your SSH keys to `~/.ssh/authorized_keys`
+4. Set up remote access via SSH via `System Preferences` → `Sharing` → Check
+   - [x] Remote Login and add your SSH keys to `~/.ssh/authorized_keys`
 
 5. Configure default account to automatically log in
    `System Preferences` → `Users & Groups` → `Login Options`
@@ -171,25 +172,26 @@ official `radicle-upstream` repository at the moment.
    `xcode-select --install`
 
 9. Install Homebrew
-   `/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"\`
+```
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
 
 10. Install some useful terminal utilities:
   `brew install htop neovim`
 
-11. Set up Buildkite.
-    The agent token can be retreived from the [buildkite website][buildkite]
-    under `Agents` → `Agent Token` → `Reveal Agent Token`
+11. Set up Buildkite. The agent token can be retreived from the
+    [buildkite website][buildkite] under `Agents` → `Agent Token`
+    → `Reveal Agent Token`
 
 ```
 brew tap buildkite/buildkite
 brew install --token='!!!FILL_IN_AGENT_TOKEN!!!' buildkite-agent
-brew services start buildkite/buildkite/buildkite-agent
 ```
 
 12. Configure buildkite by copying config files from this repo `macos/` to the
     relevant paths:
-      - `/usr/local/etc/buildkite-agent` (remember to fill in agent token!)
-      - `/usr/local/etc/buildkite-agent/hooks/environment`
+    - `/usr/local/etc/buildkite-agent` (remember to fill in agent token!)
+    - `/usr/local/etc/buildkite-agent/hooks/environment`
 
 13. Create the build folder:
     `mkdir -p /Users/buildkite/buildkite-cache`
@@ -206,7 +208,9 @@ brew install yarn
 ```
 
 15. Start Buildkite agent (this should also make sure it's started on reboot)
-    `brew services start buildkite/buildkite/buildkite-agent`
+```
+brew services start buildkite/buildkite/buildkite-agent
+```
 
 
 [caffeine]: http://lightheadsw.com/caffeine
