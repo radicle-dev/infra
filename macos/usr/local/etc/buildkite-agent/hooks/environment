@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "For security reasons this agent is only allowed to build"
+echo "the 'master' branch of 'https://github.com/radicle-dev/radicle-upstream'!"
+
+if [[ "${BUILDKITE_REPO}" != "https://github.com/radicle-dev/radicle-upstream" ]]; then
+  echo "Repository not allowed: ${BUILDKITE_REPO}"
+  exit 1
+fi
+
+if [[ "${BUILDKITE_BRANCH}" != "master" ]]; then
+  echo "Branch not allowed: ${BUILDKITE_BRANCH}"
+  exit 1
+fi

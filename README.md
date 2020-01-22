@@ -1,7 +1,8 @@
 # ci
 CI infrastructure
 
-## Caching
+## Linux build agents
+### Caching
 
 Each job container has a cache volume mounted at `/cache`. In general, the cache
 volume is shared only between jobs for the same branch on the same runner. This
@@ -14,7 +15,7 @@ volume of the master branch of the runner.
 The cache volume has a quota of 8GiB. This value can be configured through
 `CACHE_QUOTA_GiB` in `./linux/etc/buildkite-agent/hooks/command`.
 
-### Shared master cache
+#### Shared master cache
 
 It is possible to configure a pipeline so that runners on the same machine share
 the build cache of the builds of the default branch. This behavior is controlled
@@ -41,7 +42,7 @@ must be limited.
 Note that `SHARED_MASTER_CACHE` cache must be enabled for both steps so that
 branch builds also know to use the master cache.
 
-## Building docker images
+### Building docker images
 
 Linux builds run inside docker containers. The image to use for the build step
 is specified via the `DOCKER_IMAGE` environment variable of the step. The image
@@ -102,7 +103,7 @@ The agent uses [`img`][img] to build the image.
 [buildkite-env]: https://buildkite.com/docs/pipelines/environment-variables
 [img]: https://github.com/genuinetools/img
 
-## Secrets
+### Secrets
 
 The build agent probes for a file `.buildkite/secrets.yaml` in the source
 checkout, and if it exists, attempts to decrypt it using [`sops`][sops] in
@@ -123,3 +124,94 @@ Repositories making using of this feature must:
    for details.
 
 [sops]: https://github.com/mozilla/sops
+
+
+## macOS build agents
+
+For now we have one macOS host, a 2018 6-core i5 Mac mini (19C57) with
+32Gb RAM and a 256GB SSD.
+
+For security reasons it is configured to only build the `master` branch of the
+official `radicle-upstream` repository at the moment.
+
+
+### Agent setup
+
+1. Buy or rent a Mac and set up latest macOS (Catalina 10.15.2)
+
+2. Perform default user setup (part of macOS when you first turn it on),
+   call the user: `buildkite`
+
+3. Set up remote access via screen sharing
+   `System Preferences` → `Sharing` → Check
+   - [x] Screen Sharing
+
+   The host will be reachable from any other Mac on the local network via the
+   built-in Screen Sharing app.
+
+4. Set up remote access via SSH via `System Preferences` → `Sharing` → Check
+   - [x] Remote Login and add your SSH keys to `~/.ssh/authorized_keys`
+
+5. Configure default account to automatically log in
+   `System Preferences` → `Users & Groups` → `Login Options`
+   → `Automatic login` → Choose `buildkite`
+
+6. Prevent the Mac from going to sleep:
+   `System Preferences` → `Energy Saver` → `Turn display off after`
+   → Choose `never`
+   - [x] "Prevent computer from sleeping automatically when the display is off"
+   - [x] "Start up automatically after power failure"
+
+7. Install [caffeine][caffeine] and configure it (right click on menu bar icon)
+   to start on login:
+   - [x] Automatically start Caffeine at login
+   - [x] Activate Caffeine at launch
+   - Default duration: Indefinitely
+
+8. Install Xcode from App Store and configure it via the terminal:
+   `xcode-select --install`
+
+9. Install Homebrew
+```
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
+
+10. Install some useful terminal utilities:
+  `brew install htop neovim`
+
+11. Set up Buildkite. The agent token can be retreived from the
+    [buildkite website][buildkite] under `Agents` → `Agent Token`
+    → `Reveal Agent Token`
+
+```
+brew tap buildkite/buildkite
+brew install --token='!!!FILL_IN_AGENT_TOKEN!!!' buildkite-agent
+```
+
+12. Configure buildkite by copying config files from this repo `macos/` to the
+    relevant paths:
+    - `/usr/local/etc/buildkite-agent` (remember to fill in agent token!)
+    - `/usr/local/etc/buildkite-agent/hooks/environment`
+
+13. Create the build folder:
+    `mkdir -p /Users/buildkite/buildkite-cache`
+
+14. Set up radicle-upstream build dependencies
+```
+# rust toolchain
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+brew install openssl
+brew install pkgconfig
+
+# JavaScript toolchain
+brew install yarn
+```
+
+15. Start Buildkite agent (this should also make sure it's started on reboot)
+```
+brew services start buildkite/buildkite/buildkite-agent
+```
+
+
+[caffeine]: http://lightheadsw.com/caffeine
+[buildkite]: https://buildkite.com/organizations/monadic/agents
