@@ -114,8 +114,7 @@ function build_docker_image() {
     #
     # See [Note on CI and organizations].
     declare img_cache_mount
-    if [[ "${BUILDKITE_PULL_REQUEST_REPO}" == "" ||
-          "${BUILDKITE_PULL_REQUEST_REPO}" =~ $TRUSTED_UPSTREAMS_REGEX ]]
+    if [[ "${TRUSTED_BUILD}" == "true" ]]
     then
         img_cache_mount="type=volume,src=${img_cache},dst=/cache"
     else

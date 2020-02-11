@@ -24,72 +24,77 @@ docker volume create \
     "$master_cache_volume" >/dev/null
 echo "Using master cache volume ${master_cache_volume}"
 
-# [Note on CI and organizations]
-# We consider builds from certain GitHub organizations "trusted", which means
-# they can have access to shared caches, use encrypted secrets, have less strict
-# process isolation, and potentially other things. To detect this, we need to
-# match `$BUILDKITE_REPO` against below regular expression. Additionally,
-# `$BUILDKITE_PULL_REQUEST_REPO` can either be empty (not a pull request), or
-# must match the regex, too.
+# Set `TRUSTED_BUILD` environment.
 #
-# This check may be necessary in a few different places. When making it, insert
-# a reference to this note as done below.
+# The `TRUSTED_BUILD` environment variable is set to `true` if we are
+# building code that was pushed to a trusted repo, i.e. one that
+# matches `TRUSTED_UPSTREAMS_REGEX`.
+#
+# Trusted builds have access to shared caches, use encrypted secrets,
+# have less strict process isolation, and potentially other things.
 
-declare -rx TRUSTED_UPSTREAMS_REGEX="(https|git)://github.com/(oscoin|radicle-dev)/*"
+declare -r TRUSTED_UPSTREAMS_REGEX="(https|git)://github.com/(oscoin|radicle-dev)/*"
 
-# See [Note on CI and organizations].
 if [[ "${BUILDKITE_REPO}" =~ $TRUSTED_UPSTREAMS_REGEX ]]
 then
+    # Guard against Github Pull Requests from third parties origin.
+    # `$BUILDKITE_PULL_REQUEST_REPO` may be empty if the build was
+    # triggered from a push and not a PR. In this case we trust it.
     if [[ "${BUILDKITE_PULL_REQUEST_REPO}" == "" ||
           "${BUILDKITE_PULL_REQUEST_REPO}" =~ $TRUSTED_UPSTREAMS_REGEX ]]
     then
-        export DOCKER_RUNTIME=runc
-
-        if [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
-        then
-            # Use and mutate the master cache
-            declare -r cache_volume="${master_cache_volume}"
-        else
-            # Create a branch cache from master, labelled for later pruning
-            declare -r branch_cache_volume="${cache_volume_prefix}_${BUILDKITE_BRANCH}"
-            docker volume create \
-                --driver=zockervols \
-                --label=build_cache \
-                --opt="from=${master_cache_volume}" \
-                --opt="quota=${CACHE_QUOTA_GiB}GiB" \
-                --opt="exec=on" \
-                "$branch_cache_volume"
-            declare -r cache_volume="${branch_cache_volume}"
-        fi
-
-        export DOCKER_CACHE_MOUNT="type=volume,src=${cache_volume},dst=/cache,volume-driver=zockervols,volume-nocopy=true"
-
-        # FIXME: can we ensure somehow that all variables in secrets_file are
-        # prefixed by `SECRET_`?
-        declare -r secrets_file="/etc/buildkite-agent/secrets"
-        if test -r "$secrets_file" -a -f "$secrets_file"
-        then
-            set -a
-            # shellcheck source=/dev/null
-            . "$secrets_file"
-            set +a
-        fi
-
-        # "Trusted" builds may bump the timeout
-        if [[ "${BUILDKITE_TIMEOUT}" != "false" ]]
-        then
-            timeout_minutes="$((BUILDKITE_TIMEOUT > MAX_TIMEOUT_MINUTES ? MAX_TIMEOUT_MINUTES : BUILDKITE_TIMEOUT))"
-        fi
+        export TRUSTED_BUILD=true
     else
-        # Use kata-containers for isolation
-        export DOCKER_RUNTIME=kata-containers
-        # Create an anonymous branch cache from master, which gets discarded at the
-        # end of the build
-        export DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume},volume-opt=quota=${CACHE_QUOTA_GiB}GiB,volume-opt=exec=on"
+        export TRUSTED_BUILD=false
     fi
 else
     echo "Refusing to build foreign repo: ${BUILDKITE_REPO}"
     exit 1
+fi
+
+if [[ "${TRUSTED_BUILD}" == "true" ]]
+then
+    if [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
+    then
+        # Use and mutate the master cache
+        declare -r cache_volume="${master_cache_volume}"
+    else
+        # Create a branch cache from master, labelled for later pruning
+        declare -r branch_cache_volume="${cache_volume_prefix}_${BUILDKITE_BRANCH}"
+        docker volume create \
+            --driver=zockervols \
+            --label=build_cache \
+            --opt="from=${master_cache_volume}" \
+            --opt="quota=${CACHE_QUOTA_GiB}GiB" \
+            --opt="exec=on" \
+            "$branch_cache_volume"
+        declare -r cache_volume="${branch_cache_volume}"
+    fi
+
+    export DOCKER_CACHE_MOUNT="type=volume,src=${cache_volume},dst=/cache,volume-driver=zockervols,volume-nocopy=true"
+
+    # FIXME: can we ensure somehow that all variables in secrets_file are
+    # prefixed by `SECRET_`?
+    declare -r secrets_file="/etc/buildkite-agent/secrets"
+    if test -r "$secrets_file" -a -f "$secrets_file"
+    then
+        set -a
+        # shellcheck source=/dev/null
+        . "$secrets_file"
+        set +a
+    fi
+
+    # "Trusted" builds may bump the timeout
+    if [[ "${BUILDKITE_TIMEOUT}" != "false" ]]
+    then
+        timeout_minutes="$((BUILDKITE_TIMEOUT > MAX_TIMEOUT_MINUTES ? MAX_TIMEOUT_MINUTES : BUILDKITE_TIMEOUT))"
+    fi
+else
+    # Use kata-containers for isolation
+    export DOCKER_RUNTIME=kata-containers
+    # Create an anonymous branch cache from master, which gets discarded at the
+    # end of the build
+    export DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume},volume-opt=quota=${CACHE_QUOTA_GiB}GiB,volume-opt=exec=on"
 fi
 
 export TIMEOUT_MINUTES=$timeout_minutes
