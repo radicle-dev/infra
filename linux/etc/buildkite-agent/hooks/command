@@ -178,10 +178,9 @@ then
     if [[ -n ${DOCKER_FILE:-} ]]
     then
         # Re-tag DOCKER_IMAGE with current commit
-        : "${DOCKER_IMAGE:=gcr.io/opensourcecoin/${BUILDKITE_PIPELINE_SLUG}-build}"
         : "${DOCKER_IMAGE%%:*}"
-        : "${_%%@*}"
-        DOCKER_IMAGE="${_}:${BUILDKITE_COMMIT}"
+        : "${DOCKER_IMAGE%%@*}"
+        DOCKER_IMAGE="${DOCKER_IMAGE}:${BUILDKITE_COMMIT}"
 
         build_docker_image \
             "$DOCKER_IMAGE" \
