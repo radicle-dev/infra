@@ -48,7 +48,10 @@ To ensure that two runners don’t access the cache concurrently the concurrency
 must be limited.
 
 Note that `SHARED_MASTER_CACHE` cache must be enabled for both steps so that
-branch builds also know to use the master cache.
+branch builds also know to use the master cache. You must also set the
+`SHARED_MASTER_CACHE` environment variable for the `buildkite-agent pipeline
+upload` that is defined in the project UI. See
+[issue #42](https://github.com/oscoin/ci/issues/42).
 
 ### Building docker images
 
