@@ -49,6 +49,11 @@ build_env=(
     "--env=BUILDKITE_COMMIT"
 )
 
+if [[ "${TRUSTED_BUILD}" == "true" ]]
+then
+  build_env+=("--env=BUILDKITE_AGENT_TOKEN")
+fi
+
 declare -r img_image="gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c"
 
 # Pipeline variables
@@ -74,6 +79,7 @@ volumes=(
     "--tmpfs=/tmp:rw,exec,nosuid,size=$tmp_size"
     "--mount=${DOCKER_CACHE_MOUNT}"
     "--mount=type=bind,src=${BUILDKITE_BUILD_CHECKOUT_PATH},dst=/build"
+    "--mount=type=bind,src=/usr/bin/buildkite-agent,dst=/bin/buildkite-agent,readonly"
 )
 
 uid="$(id -u buildkite-builder)"
@@ -114,8 +120,7 @@ function build_docker_image() {
     #
     # See [Note on CI and organizations].
     declare img_cache_mount
-    if [[ "${BUILDKITE_PULL_REQUEST_REPO}" == "" ||
-          "${BUILDKITE_PULL_REQUEST_REPO}" =~ $TRUSTED_UPSTREAMS_REGEX ]]
+    if [[ "${TRUSTED_BUILD}" == "true" ]]
     then
         img_cache_mount="type=volume,src=${img_cache},dst=/cache"
     else
