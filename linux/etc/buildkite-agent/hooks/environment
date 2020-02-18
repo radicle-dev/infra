@@ -98,3 +98,22 @@ else
 fi
 
 export TIMEOUT_MINUTES=$timeout_minutes
+
+# Artifacts
+#
+# We're storing artifacts in our own GCS bucket in order to get predictable
+# download URLs. However, in order to not having to deal with sanitising branch
+# names, this applies only to `master` (that is,
+# BUILDKITE_PIPELINE_DEFAULT_BRANCH) builds. All other branches are scoped by
+# BUILDKITE_JOB_ID, as is the default.
+#
+# Note that artifacts can be overwritten when triggering a rebuild. This is no
+# different from managed artifact storage.
+#
+if [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
+then
+    declare -r artifact_scope="${BUILDKITE_PIPELINE_DEFAULT_BRANCH}/${BUILDKITE_COMMIT}"
+else
+    declare -r artifact_scope="$BUILDKITE_JOB_ID"
+fi
+export BUILDKITE_ARTIFACT_UPLOAD_DESTINATION="gs://builds.radicle.xyz/${BUILDKITE_PIPELINE_SLUG}/${artifact_scope}"
