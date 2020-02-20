@@ -101,7 +101,7 @@ storage() {
             -o mountpoint=/mnt/zocker \
             tank/zocker
         zfs allow -g buildkite-builder \
-            "atime,clone,create,compression,destroy,exec,mount,mountpoint,promote,quota,rename,setuid,snapshot" \
+            "atime,clone,create,compression,destroy,exec,mount,mountpoint,promote,quota,refquota,rename,setuid,snapshot" \
             tank/zocker
         set +x
     }
