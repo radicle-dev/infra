@@ -339,7 +339,7 @@ impl From<Error> for ErrorResponse {
 
 pub struct VolumeOptions {
     snapshot_of: Option<String>,
-    quota: u64,
+    refquota: u64,
     enable_compression: bool,
     enable_atime: bool,
     enable_exec: bool,
@@ -350,7 +350,7 @@ impl Default for VolumeOptions {
     fn default() -> Self {
         VolumeOptions {
             snapshot_of: None,
-            quota: 1024 * 1024 * 250, // 250MiB
+            refquota: 1024 * 1024 * 250, // 250MiB
             enable_compression: true,
             enable_atime: false,
             enable_exec: false,
@@ -366,7 +366,7 @@ impl VolumeOptions {
         }
 
         let mut props = HashMap::new();
-        props.insert("quota", self.quota.to_string());
+        props.insert("refquota", self.refquota.to_string());
         props.insert("compression", onoff(self.enable_compression));
         props.insert("atime", onoff(self.enable_atime));
         props.insert("exec", onoff(self.enable_exec));
@@ -410,13 +410,13 @@ impl TryFrom<HashMap<String, String>> for VolumeOptions {
     fn try_from(opts: HashMap<String, String>) -> Result<Self, Self::Error> {
         let def = VolumeOptions::default();
 
-        let quota = match opts.get("quota") {
+        let refquota = match opts.get("refquota") {
             Some(x) => Byte::from_str(x)
-                .map_err(|_| OptsError("Invalid quota specified"))
+                .map_err(|_| OptsError("Invalid refquota specified"))
                 .and_then(|byte| {
                     u64::try_from(byte.get_bytes()).map_err(|_| OptsError("Quota out of range"))
                 }),
-            None => Ok(def.quota),
+            None => Ok(def.refquota),
         }?;
 
         fn option_enabled(opts: &HashMap<String, String>, opt: &str, def: bool) -> bool {
@@ -428,7 +428,7 @@ impl TryFrom<HashMap<String, String>> for VolumeOptions {
                 .get("snapshot-of")
                 .or_else(|| opts.get("from"))
                 .cloned(),
-            quota,
+            refquota,
             enable_compression: option_enabled(&opts, "compression", def.enable_compression),
             enable_atime: option_enabled(&opts, "atime", def.enable_atime),
             enable_exec: option_enabled(&opts, "exec", def.enable_exec),
