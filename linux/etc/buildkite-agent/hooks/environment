@@ -19,7 +19,7 @@ fi
 # Create volume for master branch, if not exists
 docker volume create \
     --driver=zockervols \
-    --opt="quota=${CACHE_QUOTA_GiB}GiB" \
+    --opt="refquota=${CACHE_QUOTA_GiB}GiB" \
     --opt="exec=on" \
     "$master_cache_volume" >/dev/null
 echo "Using master cache volume ${master_cache_volume}"
@@ -65,7 +65,7 @@ then
             --driver=zockervols \
             --label=build_cache \
             --opt="from=${master_cache_volume}" \
-            --opt="quota=${CACHE_QUOTA_GiB}GiB" \
+            --opt="refquota=${CACHE_QUOTA_GiB}GiB" \
             --opt="exec=on" \
             "$branch_cache_volume"
         declare -r cache_volume="${branch_cache_volume}"
@@ -94,7 +94,7 @@ else
     export DOCKER_RUNTIME=kata-containers
     # Create an anonymous branch cache from master, which gets discarded at the
     # end of the build
-    export DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume},volume-opt=quota=${CACHE_QUOTA_GiB}GiB,volume-opt=exec=on"
+    export DOCKER_CACHE_MOUNT="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${master_cache_volume},volume-opt=refquota=${CACHE_QUOTA_GiB}GiB,volume-opt=exec=on"
 fi
 
 export TIMEOUT_MINUTES=$timeout_minutes

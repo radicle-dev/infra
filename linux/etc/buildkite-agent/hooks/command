@@ -105,7 +105,7 @@ function build_docker_image() {
         --label=build_cache \
         --opt='exec=on' \
         --opt='setuid=on' \
-        --opt='quota=15GiB' \
+        --opt='refquota=15GiB' \
         "$img_cache"
 
     # fix permissions (`img` relies on running as uid 1000)
