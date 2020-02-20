@@ -3,7 +3,7 @@ set -eou pipefail
 
 pushd "${BUILDKITE_BUILD_CHECKOUT_PATH}" >/dev/null
 
-if [[ -r .buildkite/secrets.yaml && ( "${BUILDKITE_PULL_REQUEST_REPO}" == "" || "${BUILDKITE_PULL_REQUEST_REPO}" =~ $TRUSTED_UPSTREAMS_REGEX ) ]];
+if [[ -r .buildkite/secrets.yaml && "${TRUSTED_BUILD}" == "true" ]];
 then
     echo "Writing secrets to ./.secrets"
 
