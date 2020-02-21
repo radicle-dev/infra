@@ -51,7 +51,7 @@ build_env=(
 
 if [[ "${TRUSTED_BUILD}" == "true" ]]
 then
-  build_env+=("--env=BUILDKITE_AGENT_TOKEN")
+    build_env+=("--env=BUILDKITE_AGENT_ACCESS_TOKEN")
 fi
 
 declare -r img_image="gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c"
