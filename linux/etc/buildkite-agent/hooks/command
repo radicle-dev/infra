@@ -99,13 +99,14 @@ function build_docker_image() {
     local -r image_context="$3"
 
     # Shared cache per agent
+    declare -r cache_refquota="15"
     declare -r img_cache="img_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
     docker volume create \
         --driver=zockervols \
         --label=build_cache \
         --opt='exec=on' \
         --opt='setuid=on' \
-        --opt='refquota=15GiB' \
+        --opt="refquota=${cache_refquota}GiB" \
         "$img_cache"
 
     # fix permissions (`img` relies on running as uid 1000)
@@ -124,7 +125,7 @@ function build_docker_image() {
     then
         img_cache_mount="type=volume,src=${img_cache},dst=/cache"
     else
-        img_cache_mount="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${img_cache}"
+        img_cache_mount="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${img_cache},volume-opt=refquota=${cache_refquota}GiB"
     fi
 
     # See also `build_env` above.
