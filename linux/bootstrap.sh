@@ -175,9 +175,9 @@ docker_gcr_auth() {
 
 users_groups() {
     set -x
-    if ! getent passwd buildkite-agent > /dev/null
+    if ! getent passwd buildkite-builder > /dev/null
     then
-        useradd --user-group --system buildkite-builder
+        useradd --user-group --system --uid 998 buildkite-builder
     fi
 
     if ! getent group docker > /dev/null

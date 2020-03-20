@@ -54,7 +54,7 @@ then
     build_env+=("--env=BUILDKITE_AGENT_ACCESS_TOKEN")
 fi
 
-declare -r img_image="gcr.io/opensourcecoin/img@sha256:6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c"
+declare -r img_image="gcr.io/opensourcecoin/img@sha256:ea5143e454b43ebbfc27789c25fa4ec3ba1f7e4fe674f9e3820a9254f2637770"
 
 # Pipeline variables
 #
@@ -108,12 +108,6 @@ function build_docker_image() {
         --opt='setuid=on' \
         --opt="refquota=${cache_refquota}GiB" \
         "$img_cache"
-
-    # fix permissions (`img` relies on running as uid 1000)
-    docker run --rm \
-        --mount="type=volume,src=${img_cache},dst=/cache" \
-        alpine \
-        chmod 777 /cache
 
     # Build from other repos will not be able to change the shared
     # image build cache, and receive an ephemeral cache volume snapshotted from
