@@ -54,7 +54,7 @@ then
     build_env+=("--env=BUILDKITE_AGENT_ACCESS_TOKEN")
 fi
 
-declare -r img_image="gcr.io/opensourcecoin/img@sha256:ea5143e454b43ebbfc27789c25fa4ec3ba1f7e4fe674f9e3820a9254f2637770"
+declare -r img_image="gcr.io/opensourcecoin/img@sha256:24252f659024808246d8c4d674f19d8d923688cd5f857f4a607fe8dbf42c491c"
 
 # Pipeline variables
 #
@@ -119,7 +119,12 @@ function build_docker_image() {
     then
         img_cache_mount="type=volume,src=${img_cache},dst=/cache"
     else
-        img_cache_mount="type=volume,dst=/cache,volume-driver=zockervols,volume-opt=from=${img_cache},volume-opt=refquota=${cache_refquota}GiB"
+        img_cache_mount="type=volume,dst=/cache,volume-driver=zockervols"
+        img_cache_mount="${img_cache_mount},volume-opt=from=${img_cache}"
+        # nb: we need to repeat all create options of the parent
+        img_cache_mount="${img_cache_mount},volume-opt=exec=on"
+        img_cache_mount="${img_cache_mount},volume-opt=setuid=on"
+        img_cache_mount="${img_cache_mount},volume-opt=refquota=${cache_refquota}GiB"
     fi
 
     # See also `build_env` above.
@@ -154,6 +159,7 @@ function build_docker_image() {
             --cap-add=SETUID \
             --cap-add=SETGID \
             --workdir=/build \
+            --env=IMG_DISABLE_EMBEDDED_RUNC=1 \
             "$img_image" \
                 build \
                 "${build_args[@]}" \
