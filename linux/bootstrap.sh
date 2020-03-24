@@ -46,6 +46,12 @@ apt_packages() {
         jq \
         sops \
         zockervols
+
+    # Unfortunately, the debian tini is dynamically linked. Make a copy of a
+    # statically linked tini for kata-containers
+    #
+    # See: https://github.com/kata-containers/runtime/issues/1901
+    cp /usr/bin/docker-init /usr/bin/kata-init
 }
 
 zfs_exists() {
