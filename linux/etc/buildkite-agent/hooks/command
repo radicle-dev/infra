@@ -196,6 +196,20 @@ then
     fi
 fi
 
+# Run the build step
+#
+# Note: kata-containers segfault when sharing executables with the host OS.
+#
+# This is particularly annoying with --init: if a runc container is using tini
+# (/usr/bin/docker-init) currently, no kata-containers container can run.
+# Curiously, sharing a copy of tini amongst ONLY kata-containers seems to work.
+#
+# See: https://github.com/kata-containers/runtime/issues/1901
+
+# Ensure we have a runtim
+: "${DOCKER_RUNTIME:=runc}"
+
+# Common args for `docker run`
 run_args=(
     "--name=build-${BUILDKITE_BUILD_ID}-${BUILDKITE_STEP_ID}"
     '--tty'
@@ -207,27 +221,20 @@ run_args=(
     '--workdir=/build'
 )
 
-run_cmd="/bin/sh -ec"
+# Need to be careful with shell quoting when building the docker COMMAND: it has
+# to be passed to `docker run` _without_ any quotes. This only works if we store
+# it in an array, and later expand that.
+run_cmd=()
 
-: "${DOCKER_RUNTIME:-runc}"
-
-# kata-containers segfault when sharing executables with the host OS.
-#
-# This is particularly annoying with --init: if a runc container is using tini
-# (/usr/bin/docker-init) currently, no kata-containers container can run.
-# Curiously, sharing a copy of tini amongst ONLY kata-containers seems to work.
-#
-# See: https://github.com/kata-containers/runtime/issues/1901
 if [[ "${DOCKER_RUNTIME}" == "kata-containers" ]]
 then
     volumes+=("--mount=type=bind,src=/usr/bin/kata-init,dst=/tini")
-    run_cmd="/tini -sg -- ${run_cmd}"
+    run_cmd=('/tini' '-sg' '--' '/bin/sh' '-e' '-c' "${BUILDKITE_COMMAND}")
 else
     run_args+=('--init')
+    run_cmd=('/bin/sh' '-e' '-c' "${BUILDKITE_COMMAND}")
 fi
 
-# Must not quote run_cmd
-# shellcheck disable=SC2086
 timeout \
     --kill-after="$((TIMEOUT_MINUTES + 10))m" \
     --signal=TERM \
@@ -240,7 +247,7 @@ timeout \
         --entrypoint='' \
         --runtime="${DOCKER_RUNTIME}" \
         "${DOCKER_IMAGE}" \
-        ${run_cmd} "${BUILDKITE_COMMAND}"
+        "${run_cmd[@]}"
 
 # If the step was to prepare a docker image build, run it now
 if [[ -n ${STEP_DOCKER_FILE:-} ]]
