@@ -6,7 +6,7 @@ steps:
     production: "true"
     platform: "linux"
   env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:612efe3e4a78cd82d0169538ab6bfea794afae0165a76e1bd287923f54807a31"
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build"
     DOCKER_FILE: .docker/build/Dockerfile
 
 - label: "zockervols: Package"
@@ -18,5 +18,5 @@ steps:
     production: "true"
     platform: "linux"
   env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:612efe3e4a78cd82d0169538ab6bfea794afae0165a76e1bd287923f54807a31"
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build"
     DOCKER_FILE: .docker/build/Dockerfile
