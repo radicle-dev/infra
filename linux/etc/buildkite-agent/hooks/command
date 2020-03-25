@@ -217,7 +217,7 @@ run_args=(
     '--read-only'
     "--user=${uid}:${gid}"
     '--cap-drop=ALL'
-    '--security-opts=no-new-privileges'
+    '--security-opt=no-new-privileges'
     '--workdir=/build'
 )
 
