@@ -1,0 +1,11 @@
+[Unit]
+Description=Zockervols: Docker volumes on ZFS
+Before=docker.service
+After=network.target zockervols.socket
+Requires=zockervols.socket docker.service
+
+[Service]
+ExecStart=/usr/bin/zockervols
+
+[Install]
+WantedBy=multi-user.target

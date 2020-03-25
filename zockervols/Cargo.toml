@@ -1,0 +1,38 @@
+[package]
+name = "zockervols"
+description = "ZFS-backed Docker Volumes"
+version = "0.1.0"
+authors = ["Kim Altintop <kim@monadic.xyz>"]
+edition = "2018"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+byte-unit = "3.0"
+chashmap = "2.2"
+chrono = { version = "0.4", features = ["serde"] }
+clap = "2.33"
+csv = "1.1"
+itertools = "0.8"
+lazy_static = "1.4"
+listenfd = "0.3"
+log = "0.4"
+pretty_env_logger = "0.3.0"
+regex = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = "0.1"
+users = "0.9"
+warp = "0.1"
+
+[package.metadata.deb]
+maintainer = "Kim Altintop <kim@monadic.xyz>"
+copyright = "2019 Kim Altintop, Monadic GmbH"
+depends = "$auto, systemd, docker-ce, zfsutils-linux"
+priority = "optional"
+maintainer-scripts = ".debian"
+assets = [
+    ["target/release/zockervols", "usr/bin/", "755"],
+    ["systemd/zockervols.service", "lib/systemd/system/", "644"],
+    ["systemd/zockervols.socket", "lib/systemd/system/", "644"]
+]
