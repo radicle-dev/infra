@@ -20,3 +20,6 @@ steps:
   env:
     DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4b87096dc84644ef1dc8b122862aae3be5cc04c54d25003b195051585b77c406"
     DOCKER_FILE: .docker/rust/Dockerfile
+  # Temporary measure while Bintray account is locked
+  soft_fail:
+  - exit_status: 22
