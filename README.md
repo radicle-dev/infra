@@ -56,18 +56,13 @@ upload` that is defined in the project UI. See
 ### Building docker images
 
 Linux builds run inside docker containers. The image to use for the build step
-is specified via the `DOCKER_IMAGE` environment variable of the step. The image
-may also be built on the build agent itself, before executing the build step. To
-do this, specify an environment variable `DOCKER_FILE` which points to a
-`Dockerfile` relative to the repository root.
+is specified via the `DOCKER_IMAGE` environment variable of the step.
 
-Note that `DOCKER_IMAGE` takes precedence over `DOCKER_FILE` -- if `docker pull
-$DOCKER_IMAGE` succeeds, no new image is built.
+If the build agent fails to pull `DOCKER_IMAGE` it uses `DOCKER_FILE` to build
+the image locally. The image is also pushed, using the image name
+of`${DOCKER_IMAGE}` and the tag `${BUILDKITE_COMMIT}`.
 
 Only `DOCKER_IMAGE`s from the `gcr.io/opensourcecoin` repository are permitted.
-Images built by the agent are pushed to `gcr.io/opensourcecoin/${BUILDKITE_PIPELINE_SLUG}-build:${BUILDKITE_COMMIT}`
-if no `DOCKER_IMAGE` is given, and to `${DOCKER_IMAGE}:${BUILDKITE_COMMIT}`
-otherwise.
 
 ```yaml
 steps:
