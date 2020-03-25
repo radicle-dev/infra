@@ -6,7 +6,7 @@ steps:
 - label: "buildkite-hooks"
   command: .buildkite/build-buildkite-hooks.sh
   artifact_paths:
-  - buildkite-hooks/target/debian/*.deb
+  - ci/target/debian/*.deb
   agents:
     production: "true"
     platform: "linux"

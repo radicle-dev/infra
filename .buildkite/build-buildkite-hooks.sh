@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -eoux pipefail
 
+pushd ci
+trap 'popd' EXIT
+
 version="$(cargo read-manifest|jq -r .version)+${BUILDKITE_BUILD_NUMBER}"
 deb="buildkite-hooks_${version}_amd64.deb"
 
