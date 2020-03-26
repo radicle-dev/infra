@@ -1,0 +1,7 @@
+[Unit]
+Description=Nuke build cache docker volumes
+
+[Service]
+Type=oneshot
+ExecStart=/etc/systemd/system/docker-volume-nuke.sh
+User=buildkite-agent
