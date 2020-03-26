@@ -1,0 +1,6 @@
+[Unit]
+Description=Run the ZFS prune script
+
+[Service]
+Type=oneshot
+ExecStart=/etc/systemd/system/zfs-prune.sh

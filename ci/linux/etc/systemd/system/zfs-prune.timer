@@ -1,0 +1,9 @@
+[Unit]
+Description=Prune ZFS filesystems approaching their quota
+
+[Timer]
+OnCalendar=04:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
