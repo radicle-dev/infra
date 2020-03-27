@@ -3,7 +3,7 @@ set -eou pipefail
 
 declare -ri MIN_FREE_PERCENT=5
 
-for fs in $(zfs list -Ho name)
+for fs in $(zfs list -Hro name tank/zocker)
 do
     mapfile -t usage < <(zfs get refquota,available -Hpo value "$fs")
     declare -i quota=${usage[0]}
