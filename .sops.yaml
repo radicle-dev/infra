@@ -1,0 +1,3 @@
+creation_rules:
+- path_regex: .*/registry/.*
+  gcp_kms: projects/radicle-registry-dev/locations/global/keyRings/dev/cryptoKeys/radicle-infra-repo
