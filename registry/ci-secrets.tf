@@ -1,4 +1,4 @@
-# KMS key for CI secret
+# KMS key for managing CI secret in the `radicle-registry` repository.
 #
 # Creates key `ci-secrets` in keyring `dev` and grants decrypting
 # permissions to the buildkite agent service account.
@@ -21,6 +21,7 @@ resource "google_kms_crypto_key" "ci-secrets" {
     prevent_destroy = true
   }
 }
+
 resource "google_kms_crypto_key_iam_binding" "ci-secrets-encrypter" {
   crypto_key_id = google_kms_crypto_key.ci-secrets.id
 
