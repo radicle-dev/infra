@@ -128,12 +128,24 @@ resource "kubernetes_stateful_set" "prometheus" {
             name       = "prometheus-config"
             mount_path = "/etc/prometheus"
           }
+
+          volume_mount {
+            name       = "grafana-cloud-api-key"
+            mount_path = "/var/run/secrets/grafana-cloud-api-key"
+          }
         }
 
         volume {
           name = "prometheus-config"
           config_map {
             name = "prometheus"
+          }
+        }
+
+        volume {
+          name = "grafana-cloud-api-key"
+          secret {
+            secret_name = kubernetes_secret.grafana-cloud-api-key.metadata[0].name
           }
         }
       }
@@ -205,4 +217,28 @@ resource "kubernetes_cluster_role_binding" "prometheus" {
     name      = kubernetes_service_account.prometheus.metadata[0].name
     namespace = kubernetes_service_account.prometheus.metadata[0].namespace
   }
+}
+
+resource "kubernetes_secret" "grafana-cloud-api-key" {
+  metadata {
+    name      = "grafana-cloud-api-key"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      app = "prometheus"
+    }
+  }
+
+  data = {
+    api-key = data.external.secrets.result.grafana_cloud_devnet_prometheus
+  }
+}
+
+data "external" "secrets" {
+  program = [
+    "sops",
+    "--decrypt",
+    "--output-type=json",
+    "./secrets.yaml",
+  ]
+
 }
