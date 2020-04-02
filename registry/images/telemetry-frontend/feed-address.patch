@@ -1,0 +1,15 @@
+diff --git a/packages/frontend/src/Connection.ts b/packages/frontend/src/Connection.ts
+index 74bcaad..419fb9b 100644
+--- a/packages/frontend/src/Connection.ts
++++ b/packages/frontend/src/Connection.ts
+@@ -18,9 +18,7 @@ export class Connection {
+ 
+   private static readonly utf8decoder = new TextDecoder('utf-8');
+ 
+-  private static readonly address = window.location.protocol === 'https:'
+-                                      ? `wss://${window.location.hostname}/feed/`
+-                                      : `ws://127.0.0.1:8000/feed`;
++  private static readonly address = `ws://${window.location.hostname}/feed/`
+ 
+   // private static readonly address = 'wss://telemetry.polkadot.io/feed/';
+ 
