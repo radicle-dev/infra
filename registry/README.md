@@ -22,6 +22,19 @@ Run `terraform output` for information about entry points.
 
 [radicle-registry]: https://github.com/radicle-dev/radicle-registry
 
+Monitoring
+----------
+
+We use [Grafana Cloud][grafana-cloud] to monitor the Registry nodes. You can
+find the Grafana instance at [`radicle.grafana.net`][radicle-grafaa]
+
+We monitor the underlying infrastructure (Kubernetes and VMs) with [Stack
+Driver][stack-driver]
+
+[grafana-cloud]: https://grafana.com/orgs/radicle/api-keys
+[stack-driver]: https://console.cloud.google.com/monitoring?project=radicle-registry-dev
+[radicle-grafana]: https://radicle.grafana.net
+
 Container Images
 ----------------
 
