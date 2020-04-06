@@ -60,7 +60,6 @@ resource "kubernetes_deployment" "devnet-miner" {
             "--mine=5HYpUCg4KKiwpih63PUHmGeNrK2XeTxKR83yNKbZeTsvSKNq",
             "--bootnodes=/dns4/validator-0.validator.devnet.svc.cluster.local/tcp/30333/p2p/QmRpheLN4JWdAnY7HGJfWFNbfkQCb6tFf4vvA6hgjMZKrR",
             "--chain=devnet",
-            "--telemetry-endpoints=ws://telemetry-backend.devnet.svc.cluster.local.:8000/submit",
             "--prometheus-external"
           ]
 
