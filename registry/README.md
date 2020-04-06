@@ -15,12 +15,12 @@ Managed Infrastructure
 * GKE cluster `radicle-registry-devnet`
   * StatefulSet of two validators that also serve as boot nodes. See `./devnet-validators.tf`
   * Deployment of mining nodes. See `./devnet-miners.tf`
-  * Public telemetry server and dashboard for devnet. See `./devnet-telemetry.tf`
   * Prometheus to collect metrics from pods. See `./monitoring.tf`
 
 Run `terraform output` for information about entry points.
 
 [radicle-registry]: https://github.com/radicle-dev/radicle-registry
+
 
 Monitoring
 ----------
@@ -34,16 +34,6 @@ Driver][stack-driver]
 [grafana-cloud]: https://grafana.com/orgs/radicle/api-keys
 [stack-driver]: https://console.cloud.google.com/monitoring?project=radicle-registry-dev
 [radicle-grafana]: https://radicle.grafana.net
-
-Container Images
-----------------
-
-The `./images` folder holds build scripts for container image used by the
-infrastructure.
-
-To build any of the images run `./images/<image-name>/build.sh`.
-
-If you change an image make sure to bump the image version in the build script.
 
 
 Using Terraform
