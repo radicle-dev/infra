@@ -6,6 +6,11 @@ remote_write:
   basic_auth:
     username: 10831
     password_file: /var/run/secrets/grafana-cloud-api-key/api-key
+  write_relabel_configs:
+  - action: replace
+    target_label: kubernetes_cluster
+    replacement: devnet
+
 
 scrape_configs:
 - job_name: radicle-registry-nodes
