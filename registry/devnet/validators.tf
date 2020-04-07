@@ -141,7 +141,7 @@ resource "kubernetes_stateful_set" "devnet-validator" {
           image   = "gcr.io/opensourcecoin/radicle-registry/node:3deb30f6843b2396819b74d5ad18682e3eec08c1"
           name    = "radicle-registry-node"
           command = ["bash", "-c"]
-          args    = [file("devnet-run-validator.sh")]
+          args    = [file("${path.module}/run-validator.sh")]
 
           port {
             name           = "ws-rpc-api"
