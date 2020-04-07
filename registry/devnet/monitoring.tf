@@ -178,7 +178,7 @@ resource "kubernetes_config_map" "prometheus" {
   }
 
   data = {
-    "prometheus.yml" = file("prometheus.yaml")
+    "prometheus.yml" = file("${path.module}/prometheus.yaml")
   }
 }
 
@@ -238,7 +238,6 @@ data "external" "secrets" {
     "sops",
     "--decrypt",
     "--output-type=json",
-    "./secrets.yaml",
+    "${path.root}/secrets.yaml",
   ]
-
 }

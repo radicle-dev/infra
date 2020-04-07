@@ -12,10 +12,7 @@ Managed Infrastructure
 * KMS key for managing
   * CI secrets in the [`radicle-registry`][radicle-registry] repository. See `./kms-ci.tf`.
   * Secrets in this repository. See `./kms-infra.tf`
-* GKE cluster `radicle-registry-devnet`
-  * StatefulSet of two validators that also serve as boot nodes. See `./devnet-validators.tf`
-  * Deployment of mining nodes. See `./devnet-miners.tf`
-  * Prometheus to collect metrics from pods. See `./monitoring.tf`
+* GKE cluster `radicle-registry-devnet`. See `./devnet`.
 
 Run `terraform output` for information about entry points.
 
