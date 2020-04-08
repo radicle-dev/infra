@@ -14,10 +14,21 @@ resource "kubernetes_role" "devnet-node-updater" {
   }
 
   rule {
-    api_groups     = ["apps"]
-    resources      = ["statefulsets"]
-    resource_names = ["devnet-nodes"]
-    verbs          = ["get", "watch", "list", "update", "patch"]
+    api_groups = ["apps"]
+    resources  = ["statefulsets"]
+    resource_names = [
+      kubernetes_stateful_set.devnet-validator.metadata[0].name,
+    ]
+    verbs = ["get", "watch", "list", "update", "patch"]
+  }
+
+  rule {
+    api_groups = ["extensions"]
+    resources  = ["deployments"]
+    resource_names = [
+      kubernetes_deployment.devnet-miner.metadata[0].name
+    ]
+    verbs = ["get", "watch", "list", "update", "patch"]
   }
 }
 
