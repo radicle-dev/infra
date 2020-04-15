@@ -13,7 +13,6 @@ if [[ "$pod_index" = "0" ]]; then
 fi
 
 exec radicle-registry-node \
-  --name "$KUBERNETES_POD_NAME" \
   --data-path /data \
   --chain devnet \
   --unsafe-rpc-external \
