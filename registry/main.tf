@@ -6,6 +6,11 @@ module "devnet" {
   source = "./devnet"
 }
 
+module "ffnet" {
+  source  = "./ffnet"
+  project = local.project
+}
+
 provider "google" {
   version = "~>3.2"
   project = local.project

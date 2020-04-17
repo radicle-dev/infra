@@ -12,7 +12,9 @@ Managed Infrastructure
 * KMS key for managing
   * CI secrets in the [`radicle-registry`][radicle-registry] repository. See `./kms-ci.tf`.
   * Secrets in this repository. See `./kms-infra.tf`
-* GKE cluster `radicle-registry-devnet`. See `./devnet`.
+* GKE cluster `radicle-registry-devnet` for running a devnet that we can play
+  around with. See `./devnet`.
+* GKE cluster `radicle-registry-ffnet` for running the FFnet information. See `./ffnet`.
 
 Run `terraform output` for information about entry points.
 
