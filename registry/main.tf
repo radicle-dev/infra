@@ -19,6 +19,10 @@ output "ffnet-boot-node-addresses" {
   value = module.ffnet.boot-node-addresses
 }
 
+output "ffnet-node-rpc-url" {
+  value = module.ffnet.node-rpc-url
+}
+
 provider "google" {
   version = "~>3.2"
   project = local.project
