@@ -1,30 +1,4 @@
-# Statefulset of two validator nodes. The P2P ports of the nodes are exposed
-# through a `LoadBalancer`.
-
-resource "kubernetes_service" "boot" {
-  for_each = toset([
-    "0", "1"
-  ])
-
-  metadata {
-    name = "boot-${each.key}"
-  }
-
-  spec {
-    type = "LoadBalancer"
-
-    selector = {
-      app                                  = "validator"
-      "statefulset.kubernetes.io/pod-name" = "validator-${each.key}"
-    }
-
-    port {
-      name        = "p2p"
-      port        = 30333
-      target_port = "p2p"
-    }
-  }
-}
+# Statefulset of two validator nodes.
 
 # Headless service to be able to address the nodes with DNS.
 resource "kubernetes_service" "validator" {
