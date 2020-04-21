@@ -52,3 +52,26 @@ Your Google Cloud account needs to have the appropriate permissions for the
 [sops]: https://github.com/mozilla/sops
 [gcloud-login]: https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login
 [google-adc]: https://cloud.google.com/docs/authentication/production#finding_credentials_automatically
+
+Runbook
+-------
+
+### Resetting the Devnet chain
+
+Resetting the devnet chain means that all blocks, transactions, and state
+present in the devnet chain are discarded. The nodes running in the cluster will
+start from a new genesis block.
+
+To reset the devnet, follow these steps.
+
+1. Remove the existing node deployments and associated data from the cluster
+  ```bash
+  kubectl delete deployments/miner statefulsets.apps/validator
+  kubectl delete persistentvolumeclaims -l app=validator
+  ```
+  If you are resetting a different network, make sure that all other node
+  deployments are deleted, too.
+2. Update the node image in `./main.tf` to the latest version.
+3. Run `terraform apply`
+4. Verify that the devnet is connected and produces using our
+   [dashboards][radicle-grafana].

@@ -138,7 +138,7 @@ resource "kubernetes_stateful_set" "devnet-validator" {
         termination_grace_period_seconds = 3
 
         container {
-          image   = "gcr.io/opensourcecoin/radicle-registry/node:3deb30f6843b2396819b74d5ad18682e3eec08c1"
+          image   = local.node_image
           name    = "radicle-registry-node"
           command = ["bash", "-c"]
           args    = [file("${path.module}/run-validator.sh")]
