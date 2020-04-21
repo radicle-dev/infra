@@ -1,3 +1,7 @@
+locals {
+  node_image = "gcr.io/opensourcecoin/radicle-registry/node:55c2f5b00673e8634e7e937470e6634b4233c4a2"
+}
+
 resource "google_container_cluster" "radicle-registry-devnet" {
   provider = google-beta
   name     = "radicle-registry-devnet"

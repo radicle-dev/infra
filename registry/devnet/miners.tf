@@ -55,9 +55,8 @@ resource "kubernetes_deployment" "devnet-miner" {
         }
 
         container {
-          image   = "gcr.io/opensourcecoin/radicle-registry/node:3deb30f6843b2396819b74d5ad18682e3eec08c1"
-          name    = "radicle-registry-node"
-          command = ["radicle-registry-node"]
+          image = local.node_image
+          name  = "radicle-registry-node"
           args = [
             # The SS58 address for the seed string //Mine
             "--mine=5HYpUCg4KKiwpih63PUHmGeNrK2XeTxKR83yNKbZeTsvSKNq",
