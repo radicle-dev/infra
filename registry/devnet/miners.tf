@@ -21,6 +21,9 @@ resource "kubernetes_deployment" "devnet-miner" {
   metadata {
     name      = "miner"
     namespace = kubernetes_namespace.devnet.metadata[0].name
+    labels = {
+      app = "miner"
+    }
   }
 
   spec {
