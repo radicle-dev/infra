@@ -254,9 +254,15 @@ if [[ -n ${STEP_DOCKER_FILE:-} ]]
 then
     if [[ -n ${STEP_DOCKER_IMAGE:-} ]]
     then
+        if [[ -n "${BUILDKITE_TAG}" ]]
+        then
+          tag="${BUILDKITE_TAG}"
+        else
+          tag="${BUILDKITE_COMMIT}"
+        fi
         echo "--- Build container image artifact"
         build_docker_image \
-            "${STEP_DOCKER_IMAGE}:${BUILDKITE_COMMIT}" \
+            "${STEP_DOCKER_IMAGE}:${tag}" \
             "${STEP_DOCKER_FILE}" \
             "${STEP_DOCKER_CONTEXT:-$(dirname "$STEP_DOCKER_FILE")}"
     else

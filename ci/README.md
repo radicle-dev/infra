@@ -101,9 +101,9 @@ the `Dockerfile` as its context, i.e. you can only `ADD` files from there. It is
 also possible to override the context by defining the `STEP_DOCKER_CONTEXT` env
 variable.
 
-The built image is tagged with the name given by `STEP_DOCKER_IMAGE` and the git
-commit hash `BUILDKITE_COMMIT` as the tag. The agent pushes the image to a
-registry deduced from `DOCKER_IMAGE`.
+For branch builds the image is pushed to `$STEP_DOCKER_IMAGE:$BUILDKITE_COMMIT`.
+For builds of a git tag the image is pushed to
+`$STEP_DOCKER_IMAGE:$BUILDKITE_TAG`.
 
 When building most of the [Buildkite environment variables][buildkite-env] are
 available as [build arguments][docker-build-args].
@@ -144,12 +144,22 @@ are stored in a publicly readable Monadic-managed GCS bucket.
 Artifacts uploaded by a `master` (that is, `$BUILDKITE_PIPELINE_DEFAULT_BRANCH`)
 builds will have a predictable URL, e.g.:
 
-`https://builds.radicle.xyz/radicle-registry/master/$BUILDKITE_COMMIT/$ARTIFACT_PATH`
+```
+https://builds.radicle.xyz/radicle-registry/master/$BUILDKITE_COMMIT/$ARTIFACT_PATH`
+```
+
+Artifacts uploaded by a git tag build will be uploaded to
+
+```
+https://builds.radicle.xyz/radicle-registry/$BUILDKITE_TAG/$ARTIFACT_PATH
+```
 
 All other artifacts are scoped by `$BUILDKITE_JOB_ID`, and best discovered
 through the Buildkite UI or API. E.g.:
 
-`https://builds.radicle.xyz/radicle-registry/b2d9d6fd-cc6a-4c44-90e4-b07b5c50ee4c/$ARTIFACT_PATH`
+```
+https://builds.radicle.xyz/radicle-registry/b2d9d6fd-cc6a-4c44-90e4-b07b5c50ee4c/$ARTIFACT_PATH`
+```
 
 ## macOS build agents
 
