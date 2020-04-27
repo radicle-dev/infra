@@ -11,5 +11,7 @@ This module describes the infrastructure for the Radicle Registry FFnet.
   preemptible [`c2` instances][c2-instances].
 * A [Prometheus instance](./monitoring.tf) that collects metrics and forwards them
   to [Grafana Cloud](https://radicle.grafana.net).
+* The [Grafana alerts](./grafana_alerts.md), which allow us to monitor the health
+  of the ffnet.
 
 [c2-instances]: https://cloud.google.com/compute/docs/machine-types#c2_machine_types
