@@ -9,6 +9,13 @@ declare -i timeout_minutes=$MIN_TIMEOUT_MINUTES
 declare -ri CACHE_QUOTA_GiB=8
 declare -r cache_volume_prefix="cache_${BUILDKITE_AGENT_NAME}_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
 
+if [[ -n "${BUILDKITE_TAG}" && ! ( "${BUILDKITE_TAG}" =~ ^[a-zA-Z][a-zA-Z0-9._\-]*$ ) ]]
+then
+  echo "Refusing to build for ill-formatted tag ${BUILDKITE_TAG}"
+  echo "Tag must match ^[a-zA-Z][a-zA-Z0-9._\\-]*$"
+  exit 1
+fi
+
 if [[ "${SHARED_MASTER_CACHE:-}" = "true" ]]; then
   declare -r shared_cache_volume_prefix="cache_shared_${BUILDKITE_ORGANIZATION_SLUG}_${BUILDKITE_PIPELINE_SLUG}"
   declare -r master_cache_volume="${shared_cache_volume_prefix}_${BUILDKITE_PIPELINE_DEFAULT_BRANCH}"
@@ -110,7 +117,10 @@ export TIMEOUT_MINUTES=$timeout_minutes
 # Note that artifacts can be overwritten when triggering a rebuild. This is no
 # different from managed artifact storage.
 #
-if [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
+if [[ -n "${BUILDKITE_TAG}" ]]
+then
+    declare -r artifact_scope="${BUILDKITE_TAG}"
+elif [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
 then
     declare -r artifact_scope="${BUILDKITE_PIPELINE_DEFAULT_BRANCH}/${BUILDKITE_COMMIT}"
 else
