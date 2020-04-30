@@ -3,3 +3,5 @@ creation_rules:
   gcp_kms: projects/opensourcecoin/locations/global/keyRings/buildkite/cryptoKeys/service
 - path_regex: linux/.*
   gcp_kms: projects/opensourcecoin/locations/global/keyRings/buildkite/cryptoKeys/bootstrap
+- path_regex: .*/registry/.*
+  gcp_kms: projects/radicle-registry-dev/locations/global/keyRings/dev/cryptoKeys/radicle-infra-repo
