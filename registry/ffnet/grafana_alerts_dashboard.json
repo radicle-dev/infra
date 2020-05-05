@@ -35,45 +35,22 @@
             "query": {
               "params": [
                 "A",
-                "10m",
-                "now"
-              ]
-            },
-            "reducer": {
-              "params": [],
-              "type": "diff"
-            },
-            "type": "query"
-          },
-          {
-            "evaluator": {
-              "params": [
-                40
-              ],
-              "type": "lt"
-            },
-            "operator": {
-              "type": "or"
-            },
-            "query": {
-              "params": [
-                "A",
                 "1h",
                 "now"
               ]
             },
             "reducer": {
               "params": [],
-              "type": "diff"
+              "type": "last"
             },
             "type": "query"
           }
         ],
         "executionErrorState": "alerting",
         "for": "0m",
-        "frequency": "1m",
+        "frequency": "15s",
         "handler": 1,
-        "name": "Block import rate alert",
+        "name": "Block import rate 7m low",
         "noDataState": "no_data",
         "notifications": [
           {
@@ -122,7 +99,8 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\" }",
+          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\" }[7m]) * 7 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1",
+          "hide": false,
           "interval": "",
           "legendFormat": "{{ instance }}",
           "refId": "A"
@@ -134,14 +112,151 @@
           "fill": true,
           "line": true,
           "op": "lt",
-          "value": 1,
-          "yaxis": "left"
+          "value": 1
         }
       ],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Best chain height",
+      "title": "Block import rate 7m low",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": 0,
+          "format": "none",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "alert": {
+        "alertRuleTags": {},
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [
+                35
+              ],
+              "type": "lt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": [
+                "A",
+                "1h",
+                "now"
+              ]
+            },
+            "reducer": {
+              "params": [],
+              "type": "last"
+            },
+            "type": "query"
+          }
+        ],
+        "executionErrorState": "alerting",
+        "for": "0m",
+        "frequency": "15s",
+        "handler": 1,
+        "name": "Block import rate 1h low",
+        "noDataState": "no_data",
+        "notifications": [
+          {
+            "uid": "kPUOMg6Wk"
+          }
+        ]
+      },
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "grafanacloud-radicle-prom",
+      "description": "",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 5,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\" }[1h]) * 60 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{ instance }}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [
+        {
+          "colorMode": "critical",
+          "fill": true,
+          "line": true,
+          "op": "lt",
+          "value": 35
+        }
+      ],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Block import rate 1h low",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -196,7 +311,7 @@
             "query": {
               "params": [
                 "A",
-                "1m",
+                "10s",
                 "now"
               ]
             },
@@ -208,11 +323,11 @@
           }
         ],
         "executionErrorState": "alerting",
-        "for": "0m",
-        "frequency": "10s",
+        "for": "4m",
+        "frequency": "15s",
         "handler": 1,
-        "name": "Node is down alert",
-        "noDataState": "no_data",
+        "name": "Node is down",
+        "noDataState": "alerting",
         "notifications": [
           {
             "uid": "kPUOMg6Wk"
@@ -320,7 +435,7 @@
       }
     }
   ],
-  "refresh": "5s",
+  "refresh": false,
   "schemaVersion": 22,
   "style": "dark",
   "tags": [],
@@ -351,5 +466,5 @@
   "variables": {
     "list": []
   },
-  "version": 13
+  "version": 31
 }
