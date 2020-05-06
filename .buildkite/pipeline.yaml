@@ -33,3 +33,13 @@ steps:
   env:
     DOCKER_IMAGE: "gcr.io/opensourcecoin/buildkite-hooks-build@sha256:30f5c169d200228448ca497c81bddc089a82867ba4b29732d2d5ba78a3d8e180"
     DOCKER_FILE: .docker/rust/Dockerfile
+
+- label: "buildkite-hooks-agent-preview"
+  command: .buildkite/build-buildkite-hooks.sh
+  artifact_paths:
+  - artifacts/*
+  agents:
+    queue: agent-preview
+  env:
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/buildkite-hooks-build@sha256:30f5c169d200228448ca497c81bddc089a82867ba4b29732d2d5ba78a3d8e180"
+    DOCKER_FILE: .docker/rust/Dockerfile
