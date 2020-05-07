@@ -50,7 +50,7 @@
         "for": "0m",
         "frequency": "15s",
         "handler": 1,
-        "name": "Block import rate 7m low",
+        "name": "Block import rate 11m low",
         "noDataState": "no_data",
         "notifications": [
           {
@@ -99,7 +99,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\" }[7m]) * 7 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1",
+          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\" }[11m]) * 11 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1",
           "hide": false,
           "interval": "",
           "legendFormat": "{{ instance }}",
@@ -118,7 +118,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Block import rate 7m low",
+      "title": "Block import rate 11m low",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -250,7 +250,8 @@
           "fill": true,
           "line": true,
           "op": "lt",
-          "value": 35
+          "value": 35,
+          "yaxis": "left"
         }
       ],
       "timeFrom": null,
@@ -466,5 +467,5 @@
   "variables": {
     "list": []
   },
-  "version": 31
+  "version": 33
 }

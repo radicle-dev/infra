@@ -24,15 +24,15 @@ up { kubernetes_cluster="ffnet" }
 
 ## Blocks aren't imported
 ### Name
-`Block import rate 7m low`
+`Block import rate 11m low`
 ### Goal
 Check if blocks are being mined and that the chain is growing
 ### Trigger
-In the past 7 minutes the `substrate_block_height` metric has grown by less than 1.
+In the past 11 minutes the `substrate_block_height` metric has grown by less than 1.
 This is triggered only if the node is running, i.e. the `up` metric has the value of `1`.
 ### Query
 ```promql
-rate(substrate_block_height { kubernetes_cluster = "ffnet", status = "best" }[7m]) * 7 * 60
+rate(substrate_block_height { kubernetes_cluster = "ffnet", status = "best" }[11m]) * 11 * 60
 and on (instance) up{ kubernetes_cluster = "ffnet" } == 1
 ```
 
