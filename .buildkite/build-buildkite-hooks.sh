@@ -25,7 +25,7 @@ then
     set +x
     echo "--- Uploading ${deb} to bintray"
     curl -f \
-        -T "target/debian/${deb}"  \
+        -T "../target/debian/${deb}"  \
         -u"${BINTRAY_API_KEY}" \
         -H"X-Bintray-Debian-Distribution: buster" \
         -H"X-Bintray-Debian-Component: main" \
