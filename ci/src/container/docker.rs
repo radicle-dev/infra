@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, os::unix::ffi::OsStrExt, path::PathBuf, process::Command};
+use std::{path::PathBuf, process::Command};
 
 pub use crate::container::*;
 use crate::{cmd, cmd::CommandExt, timeout::Timeout};
@@ -201,6 +201,7 @@ impl Containeriser for Docker {
     }
 
     fn reap_containers(&self) -> Result<(), cmd::Error> {
+        log::debug!("Removing containers for build {}", self.build_id);
         let mut ps = self.cmd();
 
         ps.args(&[
@@ -222,16 +223,22 @@ impl Containeriser for Docker {
             ));
         }
 
-        let nl: u8 = 10;
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        let containers = stdout.split_terminator(&"\n");
 
-        out.stdout
-            .split(|x| x == &nl)
-            .map(OsStr::from_bytes)
-            .for_each(|container| {
-                let _ = self.cmd().args(&[OsStr::new("kill"), container]).status();
-
-                let _ = self.cmd().args(&[OsStr::new("rm"), container]).status();
-            });
+        for container in containers {
+            let mut cmd = self.cmd();
+            cmd.args(&["rm", "--force", container]);
+            let result = cmd.status();
+            match result {
+                Err(err) => log::error!("Running \"{:?}\" failed: {}", cmd, err),
+                Ok(exit_status) => {
+                    if !exit_status.success() {
+                        log::error!("Command \"{:?}\" exited with status {}", cmd, exit_status,)
+                    }
+                },
+            }
+        }
 
         Ok(())
     }
