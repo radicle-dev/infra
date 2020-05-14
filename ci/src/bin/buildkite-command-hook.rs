@@ -8,7 +8,7 @@ use failure::{format_err, Error};
 use log::info;
 use paw;
 
-use buildkite_hooks::{config::Config, container::docker::*, env, timeout::Timeout};
+use buildkite_hooks::{cmd, config::Config, container::docker::*, env, timeout::Timeout};
 
 struct VolumeMounts {
     build_cache: Mount,
@@ -20,9 +20,15 @@ struct VolumeMounts {
 
 #[paw::main]
 
-fn main(cfg: Config) -> Result<(), Error> {
+fn main(cfg: Config) {
     env_logger::init();
+    if let Err(err) = main_(cfg) {
+        log::error!("{}", err);
+        std::process::exit(1)
+    }
+}
 
+fn main_(cfg: Config) -> Result<(), Error> {
     let cfg = cfg.valid();
 
     let docker = Docker::new(&cfg.command_id());
@@ -89,27 +95,34 @@ fn main(cfg: Config) -> Result<(), Error> {
     // Run build command
     info!("Running build command");
 
-    docker.run_build(
-        RunBuildOptions {
-            image: build_container_image,
-            cmd: cfg.build_command.clone(),
-            mounts: vec![
-                mounts.sources,
-                mounts.tmpfs,
-                mounts.build_cache,
-                mounts.buildkite_agent,
-            ],
-            env: env::safe_buildkite_vars().chain(env::build_vars()),
-            runtime: if cfg.is_trusted_build() {
-                Runtime::Runc
-            } else {
-                Runtime::Kata
+    docker
+        .run_build(
+            RunBuildOptions {
+                image: build_container_image,
+                cmd: cfg.build_command.clone(),
+                mounts: vec![
+                    mounts.sources,
+                    mounts.tmpfs,
+                    mounts.build_cache,
+                    mounts.buildkite_agent,
+                ],
+                env: env::safe_buildkite_vars().chain(env::build_vars()),
+                runtime: if cfg.is_trusted_build() {
+                    Runtime::Runc
+                } else {
+                    Runtime::Kata
+                },
+                uid: cfg.builder_user.uid(),
+                gid: cfg.builder_group.gid(),
             },
-            uid: cfg.builder_user.uid(),
-            gid: cfg.builder_group.gid(),
-        },
-        &timeout,
-    )?;
+            &timeout,
+        )
+        .map_err(|err| match err {
+            cmd::Error::NonZeroExitStatus(_, status) => {
+                format_err!("Build command exited with {}", status)
+            },
+            err => err.into(),
+        })?;
 
     // Build step container image
     match (&cfg.step_container_dockerfile, &cfg.step_container_image) {
