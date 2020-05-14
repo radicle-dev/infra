@@ -81,12 +81,12 @@ impl Containeriser for Docker {
             .args(&["--name", &format!("build-{}", &self.build_id)])
             .args(&["--label", &self.build_id])
             .arg("--read-only")
-            .args(&["--user", &format!("{}={}", opts.uid, opts.gid)])
+            .args(&["--user", &format!("{}:{}", opts.uid, opts.gid)])
             .arg("--cap-drop=ALL")
             .arg("--security-opt=no-new-privileges")
             .args(&["--runtime".into(), opts.runtime.to_string()])
             .arg("--workdir=/build")
-            .arg("--entrypoint=''")
+            .arg("--entrypoint=")
             .args(opts.mounts.iter().map(render_mount_arg))
             .args(
                 opts.env
