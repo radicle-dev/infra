@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+if [[ "${DEBUG:-}" == true ]]; then
+  set -x
+fi
+
+zfs_exists() {
+    local cmd="$1"
+    local name="$2"
+
+    case $cmd in
+        zpool|zfs)
+            $cmd list -H "$name" 2>/dev/null | wc -l || true
+            ;;
+        *)
+            echo "Bad cmd: $cmd"
+            exit 1
+            ;;
+    esac
+}
+
+setup_storage() {
+    # udev rules seem to not apply .. sometimes
+    # we need this to be 666 for zfs delegations to work (it should be safe as
+    # per https://github.com/zfsonlinux/zfs/pull/4487, as zfs performs all
+    # access checks itself)
+    chmod 666 /dev/zfs
+
+    [[ "$(zfs_exists zpool tank)" == 1 ]] || {
+        set -x
+        zpool create tank "$@"
+        set +x
+    }
+
+    [[ "$(zfs_exists zfs tank/docker)" == 1 ]] || {
+        set -x
+        zfs create \
+            -o atime=off \
+            -o compression=on \
+            -o mountpoint=/mnt/docker \
+            tank/docker
+        set +x
+    }
+
+    [[ "$(zfs_exists zfs tank/zocker)" == 1 ]] || {
+        set -x
+        zfs create \
+            -o atime=off \
+            -o compression=on \
+            -o exec=on \
+            -o setuid=off \
+            -o mountpoint=/mnt/zocker \
+            tank/zocker
+        set +x
+    }
+
+    zfs allow -g buildkite-builder \
+        "atime,clone,create,compression,destroy,exec,mount,mountpoint,promote,quota,refquota,rename,setuid,snapshot" \
+        tank/zocker
+
+    [[ "$(zfs_exists zfs tank/builds)" == 1 ]] || {
+        set -x
+        zfs create \
+            -o atime=off \
+            -o compression=on \
+            -o exec=on \
+            -o setuid=off \
+            -o mountpoint=/mnt/builds \
+            tank/builds
+        set +x
+    }
+
+    chown buildkite-builder:buildkite-builder /mnt/zocker
+    chown buildkite-builder:buildkite-agent   /mnt/builds
+    chmod 775 /mnt/builds
+}
+
+metadata_concealment() {
+    local rule=(
+        "--in-interface=docker0"
+        "--destination=169.254.169.254"
+        "--protocol=tcp"
+        "--jump=REJECT"
+    )
+
+    set -x
+    iptables -D DOCKER-USER "${rule[@]}" || true
+    iptables -I DOCKER-USER 1 "${rule[@]}"
+    netfilter-persistent save
+    set +x
+}
+
+enable_systemd_services () {
+    local units=(
+        docker
+        zockervols.socket
+        docker-volume-prune.timer
+        docker-system-prune.timer
+    )
+
+    cpus=$(nproc)
+    cpus=$((cpus < 2 ? 2 : cpus))
+
+    agents=$((cpus / 2))
+    for i in $(seq 0 $((agents - 1)))
+    do
+        units+=("buildkite-agent@${i}")
+    done
+
+    for unit in "${units[@]}"
+    do
+        echo "systemctl enable --now $unit"
+        systemctl enable --now "$unit"
+    done
+}
+
+main() {
+    if [[ $# == 0 ]]
+    then
+      echo "Storage device parameter required"
+      exit 1
+    fi
+
+    echo "## Setting up storage"
+    setup_storage "$1"
+
+    echo "## Decrypting and installing buildkite agent token"
+    sops --decrypt \
+      /usr/share/buildkite-hooks/buildkite-agent-token.env \
+      > /etc/systemd/system/buildkite-agent@.service.d/token.env
+
+    echo "## Linking /etc/docker/daemon.json"
+    ln -sf /usr/share/buildkite-hooks/docker-daemon.json /etc/docker/daemon.json
+
+    echo "## Enabling systemd services"
+    enable_systemd_services
+}
+
+main "$@"
