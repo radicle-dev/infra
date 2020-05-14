@@ -3,9 +3,20 @@ set -eou pipefail
 
 mkdir -p /etc/buildkite-hooks/hooks
 
-ln -sf /usr/local/bin/buildkite-command-wrapper /etc/buildkite-hooks/hooks/command
-ln -sf /usr/local/bin/buildkite-command-wrapper /etc/buildkite-hooks/hooks/pre-checkout
-ln -sf /usr/local/bin/buildkite-command-wrapper /etc/buildkite-hooks/hooks/pre-exit
+link_hooks() {
+  for hook in pre-checkout command pre-exit
+  do
+    hook_path=/etc/buildkite-hooks/hooks/${hook}
+    if [[ -e "${hook_path}" ]]
+    then
+      echo "${hook_path}" exists
+      exit 1
+    fi
+
+    echo '#!/usr/bin/env bash' > ${hook_path}
+    echo "exec \"/var/lib/buildkite-hooks/bin/buildkite-${hook}-hook\"" >> ${hook_path}
+  done
+}
 
 
 services() {
