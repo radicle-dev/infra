@@ -53,6 +53,7 @@ impl Containeriser for Docker {
                     .map(|label| vec!["--label", label])
                     .flatten(),
             )
+            .arg(&opts.name)
             .safe()?
             .succeed()
             .map(|()| Volume::Persistent {
