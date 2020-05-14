@@ -112,23 +112,15 @@ impl<'a> Safe<'a> {
     /// zero exit status, or an [`Error`] otherwise.
 
     pub fn succeed(&mut self) -> Result<(), Error> {
-        self.status()
-            .map_err(|e| Error::Io(command_line(self.command), e))
-            .and_then(|status| {
-                if status.success() {
-                    Ok(())
-                } else {
-                    status.code().map_or(
-                        Err(Error::ChildKilled(command_line(self.command))),
-                        |code| {
-                            Err(Error::Io(
-                                command_line(self.command),
-                                io::Error::from_raw_os_error(code),
-                            ))
-                        },
-                    )
-                }
-            })
+        let status = self
+            .status()
+            .map_err(|e| Error::Io(command_line(self.command), e))?;
+
+        match status.code() {
+            Some(0) => Ok(()),
+            Some(_) => Err(Error::NonZeroExitStatus(command_line(self.command), status)),
+            None => Err(Error::ChildKilled(command_line(self.command))),
+        }
     }
 }
 
@@ -163,4 +155,27 @@ fn shutdown(child: &mut Child) {
     thread::sleep(Duration::from_millis(500));
 
     let _ = child.kill();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn safe_succeed_exit_ok() {
+        let result = Command::new("true").safe().unwrap().succeed();
+        match result {
+            Err(err) => panic!("Command errored with: {:?}", err),
+            _ => (),
+        }
+    }
+
+    #[test]
+    fn safe_succeed_exit_1() {
+        let result = Command::new("false").safe().unwrap().succeed();
+        match result {
+            Err(Error::NonZeroExitStatus(_, status)) => assert_eq!(status.code(), Some(1)),
+            _ => panic!("Invalid command result: {:?}", result),
+        }
+    }
 }
