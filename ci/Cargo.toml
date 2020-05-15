@@ -29,7 +29,6 @@ depends = "$auto, buildkite-agent, containerd.io, docker-ce-cli, kata-proxy, kat
 priority = "optional"
 maintainer-scripts = ".debian"
 assets = [
-    ["scripts/buildkite-hook-wrapper", "usr/local/bin/", "755"],
     ["target/release/buildkite-command-hook", "var/lib/buildkite-hooks/bin/", "755"],
     ["target/release/buildkite-pre-checkout-hook", "var/lib/buildkite-hooks/bin/", "755"],
     ["target/release/buildkite-pre-exit-hook", "var/lib/buildkite-hooks/bin/", "755"],
