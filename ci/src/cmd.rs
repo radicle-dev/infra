@@ -136,7 +136,11 @@ pub trait CommandExt {
 }
 
 impl CommandExt for Command {
-    fn sudo() -> Command { Command::new("sudo") }
+    fn sudo() -> Command {
+        let mut cmd = Command::new("sudo");
+        cmd.arg("--non-interactive");
+        cmd
+    }
 
     fn safe(&'_ mut self) -> Result<Safe<'_>, SignalsError> {
         let signals = Signals::new(&[SIGINT, SIGQUIT, SIGTERM]).map_err(SignalsError)?;
