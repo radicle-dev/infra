@@ -189,7 +189,10 @@ where
     );
 
     let default_volume_opts = vec![
-        ("quota".into(), format!("{}GiB", cfg.build_cache_quota_gib)),
+        (
+            "refquota".into(),
+            format!("{}GiB", cfg.build_cache_quota_gib),
+        ),
         ("exec".into(), "on".into()),
     ];
 
@@ -242,7 +245,7 @@ where
         volume_opts: vec![
             ("exec".into(), "on".into()),
             ("setuid".into(), "on".into()),
-            ("quota".into(), format!("{}GiB", cfg.img_cache_quota_gib)),
+            ("refquota".into(), format!("{}GiB", cfg.img_cache_quota_gib)),
         ],
         labels: vec!["build_cache".into()],
     })?;

@@ -31,6 +31,8 @@ impl Drop for Docker {
 
 impl Containeriser for Docker {
     fn create_volume(&self, opts: CreateVolumeOptions) -> Result<Volume, cmd::Error> {
+        log::debug!("Docker::create_volume({:?})", opts);
+
         self.cmd()
             .arg("volume")
             .arg("create")
