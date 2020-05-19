@@ -28,12 +28,6 @@ resource "kubernetes_service" "node-rpc" {
 }
 
 resource "kubernetes_deployment" "rpc-server" {
-  lifecycle {
-    ignore_changes = [
-      spec[0].template[0].spec[0].container[0].image,
-    ]
-  }
-
   metadata {
     name = "rpc-server"
     labels = {
