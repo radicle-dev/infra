@@ -51,8 +51,6 @@ resource "kubernetes_stateful_set" "validator" {
       spec {
         termination_grace_period_seconds = 3
 
-        subdomain = "foo"
-
         container {
           image   = local.node_image
           name    = "radicle-registry-node"
@@ -66,6 +64,7 @@ resource "kubernetes_stateful_set" "validator" {
 
             exec radicle-registry-node \
               --chain=ffnet \
+              --data-path /data \
               --prometheus-external \
               --node-key-file /tmp/node-key
             SCRIPT
