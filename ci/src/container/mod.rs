@@ -105,6 +105,7 @@ impl Volume {
     }
 }
 
+#[derive(Debug)]
 pub struct CreateVolumeOptions {
     pub name: String,
     pub driver: Option<VolumeDriver>,

@@ -28,15 +28,20 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
         let secrets_yaml = cfg.checkout_path.join(".buildkite/secrets.yaml");
 
         if secrets_yaml.exists() {
-            Command::new("sops")
-                .args(&[
-                    "--output-type",
-                    "dotenv",
-                    "--output",
-                    ".secrets",
-                    "--decrypt",
-                ])
-                .arg(secrets_yaml)
+            let mut sops = Command::new("sops");
+            sops.args(&[
+                "--output-type",
+                "dotenv",
+                "--output",
+                ".secrets",
+                "--decrypt",
+            ]);
+
+            if let GoogleApplicationCredentials::Json(path) = &cfg.google_application_credentials {
+                sops.env("GOOGLE_APPLICATION_CREDENTIALS", path);
+            }
+
+            sops.arg(secrets_yaml)
                 .safe()?
                 .succeed()
                 .map_err(|e| e.into())
@@ -55,15 +60,10 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
 fn own_checkout_path(cfg: &Config) -> Result<(), Error> {
     info!("Adjusting checkout path ownership");
 
-    let mut chown = Command::sudo();
-
-    chown
+    Command::sudo()
         .args(&["chown", "-R", "buildkite-agent"])
-        .arg(&cfg.checkout_path);
-
-    if let GoogleApplicationCredentials::Json(path) = &cfg.google_application_credentials {
-        chown.env("GOOGLE_APPLICATION_CREDENTIALS", path);
-    }
-
-    chown.safe()?.succeed().map_err(|e| e.into())
+        .arg(&cfg.checkout_path)
+        .safe()?
+        .succeed()?;
+    Ok(())
 }

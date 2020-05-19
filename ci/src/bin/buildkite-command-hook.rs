@@ -1,6 +1,7 @@
 use std::{
     iter,
     path::{Path, PathBuf},
+    process::Command,
     time::Duration,
 };
 
@@ -8,7 +9,14 @@ use failure::{format_err, Error};
 use log::info;
 use paw;
 
-use buildkite_hooks::{cmd, config::Config, container::docker::*, env, timeout::Timeout};
+use buildkite_hooks::{
+    cmd,
+    cmd::CommandExt,
+    config::Config,
+    container::docker::*,
+    env,
+    timeout::Timeout,
+};
 
 struct VolumeMounts {
     build_cache: Mount,
@@ -92,6 +100,13 @@ fn main_(cfg: Config) -> Result<(), Error> {
         )
     })?;
 
+    Command::sudo()
+        .args(&["chown", "-R"])
+        .arg(cfg.builder_user.name())
+        .arg(&cfg.checkout_path)
+        .safe()?
+        .succeed()?;
+
     // Run build command
     info!("Running build command");
 
@@ -174,7 +189,10 @@ where
     );
 
     let default_volume_opts = vec![
-        ("quota".into(), format!("{}GiB", cfg.build_cache_quota_gib)),
+        (
+            "refquota".into(),
+            format!("{}GiB", cfg.build_cache_quota_gib),
+        ),
         ("exec".into(), "on".into()),
     ];
 
@@ -227,7 +245,7 @@ where
         volume_opts: vec![
             ("exec".into(), "on".into()),
             ("setuid".into(), "on".into()),
-            ("quota".into(), format!("{}GiB", cfg.img_cache_quota_gib)),
+            ("refquota".into(), format!("{}GiB", cfg.img_cache_quota_gib)),
         ],
         labels: vec!["build_cache".into()],
     })?;
