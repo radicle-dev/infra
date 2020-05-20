@@ -5,7 +5,7 @@ steps:
     production: "true"
     platform: "linux"
   env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4b87096dc84644ef1dc8b122862aae3be5cc04c54d25003b195051585b77c406"
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:3713b2adf81c7b73eb9ec3dc357cb99327b40fa5efc481d4ad021a7cd4d4fe84"
     DOCKER_FILE: .docker/rust/Dockerfile
 
 - label: "zockervols: Package"
@@ -17,7 +17,7 @@ steps:
     production: "true"
     platform: "linux"
   env:
-    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:4b87096dc84644ef1dc8b122862aae3be5cc04c54d25003b195051585b77c406"
+    DOCKER_IMAGE: "gcr.io/opensourcecoin/zockervols-build@sha256:3713b2adf81c7b73eb9ec3dc357cb99327b40fa5efc481d4ad021a7cd4d4fe84"
     DOCKER_FILE: .docker/rust/Dockerfile
   # Temporary measure while Bintray account is locked
   soft_fail:
