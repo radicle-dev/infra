@@ -426,7 +426,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\" }[11m]) * 11 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = \"ffnet\" }[12m]) == 0)",
+          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\", kubernetes_pod_label_app=\"validator\" }[11m]) * 11 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = \"ffnet\" }[12m]) == 0)",
           "hide": false,
           "interval": "",
           "legendFormat": "{{ instance }}",
@@ -587,7 +587,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\" }[1h]) * 60 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = \"ffnet\" }[61m]) == 0)",
+          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\", kubernetes_pod_label_app=\"validator\" }[1h]) * 60 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = \"ffnet\" }[61m]) == 0)",
           "hide": false,
           "interval": "",
           "legendFormat": "{{ instance }}",
@@ -676,5 +676,5 @@
   "variables": {
     "list": []
   },
-  "version": 46
+  "version": 47
 }
