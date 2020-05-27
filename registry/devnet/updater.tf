@@ -23,7 +23,7 @@ resource "kubernetes_role" "devnet-node-updater" {
   }
 
   rule {
-    api_groups = ["extensions"]
+    api_groups = ["apps"]
     resources  = ["deployments"]
     resource_names = [
       kubernetes_deployment.devnet-miner.metadata[0].name
