@@ -3,7 +3,7 @@ variable "project" {
 }
 
 locals {
-  node_image = "gcr.io/opensourcecoin/radicle-registry/node:c8564b7c9ab1db9563dc138bd31e7b1db0bf2ed1"
+  node_image = "gcr.io/opensourcecoin/radicle-registry/node:edf3943c4d4a2cc621fd0d880d2fbbf0de6a4d2e"
 }
 
 provider "google-beta" {
