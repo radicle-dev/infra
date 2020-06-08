@@ -54,6 +54,30 @@ resource "kubernetes_deployment" "devnet-miner" {
           operator = "Exists"
         }
 
+        # We want mining pods to be spread evenly across all mining
+        # nodes. To achieve this we make mining pods anti affine to
+        # themselves.
+        affinity {
+          pod_anti_affinity {
+            preferred_during_scheduling_ignored_during_execution {
+              weight = 100
+
+              pod_affinity_term {
+                label_selector {
+                  match_expressions {
+                    key      = "app"
+                    operator = "In"
+                    values   = ["miner"]
+                  }
+                }
+
+                topology_key = "kubernetes.io/hostname"
+              }
+            }
+          }
+        }
+
+
         container {
           image = local.node_image
           name  = "radicle-registry-node"
