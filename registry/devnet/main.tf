@@ -1,5 +1,5 @@
 locals {
-  node_image = "gcr.io/opensourcecoin/radicle-registry/node:c8564b7c9ab1db9563dc138bd31e7b1db0bf2ed1 "
+  node_image = "gcr.io/opensourcecoin/radicle-registry/node:c8564b7c9ab1db9563dc138bd31e7b1db0bf2ed1"
 }
 
 resource "google_container_cluster" "radicle-registry-devnet" {
