@@ -43,18 +43,18 @@ substrate_sub_libp2p_peers_count{kubernetes_cluster="ffnet", kubernetes_pod_labe
 substrate_sub_libp2p_peers_count{kubernetes_cluster="ffnet", kubernetes_pod_label_app=~"validator|rpc-server"}
 ```
 
-## Blocks are imported in invalid rate in 11 minute window
+## Blocks are imported in invalid rate in 15 minute window
 ### Name
-`Block import rate 11m invalid`
+`Block import rate 15m invalid`
 ### Goal
 Check if blocks are being mined correctly and that the chain is growing at a sensible rate
 ### Trigger
-In the past 11 minutes the `substrate_block_height` metric of a validator node has grown
-by less than 1 or more than 25. This is triggered only if the node is running, i.e. the `up` metric
-has the value of `1` and in the past 12 minutes the node wasn't major syncing.
+In the past 15 minutes the `substrate_block_height` metric of a validator node has grown
+by less than 1 or more than 30. This is triggered only if the node is running, i.e. the `up` metric
+has the value of `1` and in the past 17 minutes the node wasn't major syncing.
 ### Query
 ```promql
-rate(substrate_block_height { kubernetes_cluster = "ffnet", status = "best", kubernetes_pod_label_app="validator" }[11m]) * 11 * 60 and on (instance) up{ kubernetes_cluster = "ffnet" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = "ffnet" }[12m]) == 0)
+rate(substrate_block_height { kubernetes_cluster = "ffnet", status = "best", kubernetes_pod_label_app="validator" }[15m]) * 15 * 60 and on (instance) up{ kubernetes_cluster = "ffnet" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = "ffnet" }[17m]) == 0)
 ```
 
 ## Blocks are imported in invalid rate in 60 minute window

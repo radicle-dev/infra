@@ -352,7 +352,7 @@
           {
             "evaluator": {
               "params": [
-                25
+                30
               ],
               "type": "gt"
             },
@@ -377,7 +377,7 @@
         "for": "0m",
         "frequency": "10s",
         "handler": 1,
-        "name": "Block import rate 11m invalid",
+        "name": "Block import rate 15m invalid",
         "noDataState": "no_data",
         "notifications": [
           {
@@ -426,7 +426,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\", kubernetes_pod_label_app=\"validator\" }[11m]) * 11 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = \"ffnet\" }[12m]) == 0)",
+          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\", kubernetes_pod_label_app=\"validator\" }[15m]) * 15 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = \"ffnet\" }[17m]) == 0)",
           "hide": false,
           "interval": "",
           "legendFormat": "{{ instance }}",
@@ -439,13 +439,14 @@
           "fill": true,
           "line": true,
           "op": "lt",
-          "value": 1
+          "value": 1,
+          "yaxis": "left"
         }
       ],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Block import rate 11m",
+      "title": "Block import rate 15m",
       "tooltip": {
         "shared": true,
         "sort": 0,
