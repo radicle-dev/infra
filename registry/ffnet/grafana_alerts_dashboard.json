@@ -263,13 +263,13 @@
         {
           "expr": "substrate_sub_libp2p_peers_count{kubernetes_cluster=\"ffnet\", kubernetes_pod_label_app=\"miner\"}",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{ instance }}",
           "refId": "A"
         },
         {
           "expr": "substrate_sub_libp2p_peers_count{kubernetes_cluster=\"ffnet\", kubernetes_pod_label_app=~\"validator|rpc-server\"}",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{ instance }}",
           "refId": "B"
         }
       ],
