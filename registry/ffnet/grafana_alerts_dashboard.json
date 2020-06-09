@@ -210,7 +210,7 @@
           }
         ],
         "executionErrorState": "alerting",
-        "for": "0m",
+        "for": "4m",
         "frequency": "10s",
         "handler": 1,
         "name": "Peer connections low",
@@ -647,7 +647,7 @@
     }
   ],
   "refresh": false,
-  "schemaVersion": 22,
+  "schemaVersion": 25,
   "style": "dark",
   "tags": [],
   "templating": {
@@ -677,5 +677,5 @@
   "variables": {
     "list": []
   },
-  "version": 48
+  "version": 54
 }

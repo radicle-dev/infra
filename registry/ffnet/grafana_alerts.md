@@ -29,7 +29,7 @@ up { kubernetes_cluster="ffnet" }
 Check if the nodes in connected to at least validator nodes and the RPC server.
 ### Trigger
 All the nodes are checked every 10 seconds for their `substrate_sub_libp2p_peers_count` reading.
-If this reading is below threshold for 1 minute, the alert is risen.
+If this reading is below threshold for 4 minute an alert is raised.
 Miner nodes aren't guaranteed to be up, so it's fine when a node is connected only with validators
 and an RPC server.
 The thresholds depend on a node's `kubernetes_pod_label_app` label:
