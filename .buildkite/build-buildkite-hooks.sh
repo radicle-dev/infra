@@ -11,7 +11,9 @@ echo "--- obey the stylez"
 cargo fmt -- --check
 
 echo "--- cargo test"
-cargo test --all
+# We’re building with the release profile so that `cargo deb` can resue the
+# build artifcats.
+cargo test --release --all
 
 echo "--- scripted tests"
 test/test-cmd-signal
