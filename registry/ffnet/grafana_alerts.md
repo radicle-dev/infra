@@ -50,11 +50,12 @@ substrate_sub_libp2p_peers_count{kubernetes_cluster="ffnet", kubernetes_pod_labe
 Check if blocks are being mined correctly and that the chain is growing at a sensible rate
 ### Trigger
 In the past 15 minutes the `substrate_block_height` metric of a validator node has grown
-by less than 1 or more than 30. This is triggered only if the node is running, i.e. the `up` metric
-has the value of `1` and in the past 17 minutes the node wasn't major syncing.
+by less than 1 or more than 30.
 ### Query
 ```promql
-rate(substrate_block_height { kubernetes_cluster = "ffnet", status = "best", kubernetes_pod_label_app="validator" }[15m]) * 15 * 60 and on (instance) up{ kubernetes_cluster = "ffnet" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = "ffnet" }[17m]) == 0)
+sum by (instance) (rate(
+  substrate_block_height{kubernetes_cluster="ffnet", status="best", kubernetes_pod_label_app="validator"}[15m]
+)) * 15 * 60",
 ```
 
 ## Blocks are imported in invalid rate in 60 minute window
@@ -64,9 +65,10 @@ rate(substrate_block_height { kubernetes_cluster = "ffnet", status = "best", kub
 Check if blocks are being mined correctly and that the chain is growing at a sensible rate
 ### Trigger
 In the past 1 hour the `substrate_block_height` metric of a validator node has grown
-by less than 35 or more than 80. This is triggered only if the node is running, i.e. the `up` metric
-has the value of `1` and in the past 1 hour and 1 minute the node wasn't major syncing.
+by less than 35 or more than 80.
 ### Query
 ```promql
-rate(substrate_block_height { kubernetes_cluster = "ffnet", status = "best", kubernetes_pod_label_app="validator" }[1h]) * 60 * 60 and on (instance) up{ kubernetes_cluster = "ffnet" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = "ffnet" }[61m]) == 0)
+sum by (instance) (rate(
+  substrate_block_height{kubernetes_cluster="ffnet", status="best", kubernetes_pod_label_app="validator"}[1h]
+)) * 60 * 60",
 ```
