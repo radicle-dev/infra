@@ -63,6 +63,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "grafanacloud-radicle-prom",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 0,
       "fillGradient": 0,
       "gridPos": {
@@ -226,6 +232,12 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "grafanacloud-radicle-prom",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
@@ -391,6 +403,12 @@
       "dashes": false,
       "datasource": "grafanacloud-radicle-prom",
       "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
@@ -426,7 +444,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\", kubernetes_pod_label_app=\"validator\" }[15m]) * 15 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = \"ffnet\" }[17m]) == 0)",
+          "expr": "sum by (instance) (rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\", kubernetes_pod_label_app=\"validator\" }[15m])) * 15 * 60",
           "hide": false,
           "interval": "",
           "legendFormat": "{{ instance }}",
@@ -553,6 +571,12 @@
       "dashes": false,
       "datasource": "grafanacloud-radicle-prom",
       "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
@@ -588,7 +612,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\", kubernetes_pod_label_app=\"validator\" }[1h]) * 60 * 60 and on (instance) up{ kubernetes_cluster = \"ffnet\" } == 1 and on (instance) (max_over_time(substrate_sub_libp2p_is_major_syncing{ kubernetes_cluster = \"ffnet\" }[61m]) == 0)",
+          "expr": "sum by (instance) (rate(substrate_block_height { kubernetes_cluster = \"ffnet\", status = \"best\", kubernetes_pod_label_app=\"validator\" }[1h])) * 60 * 60",
           "hide": false,
           "interval": "",
           "legendFormat": "{{ instance }}",
@@ -659,7 +683,6 @@
   },
   "timepicker": {
     "refresh_intervals": [
-      "5s",
       "10s",
       "30s",
       "1m",
@@ -674,8 +697,5 @@
   "timezone": "",
   "title": "Alerts dashboard",
   "uid": "aCkUKReZz",
-  "variables": {
-    "list": []
-  },
-  "version": 54
+  "version": 55
 }
