@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -eoux pipefail
 
+source ./.buildkite/common.sh
+
+prepare_cache
+
 pushd ci
 trap 'popd' EXIT
 
