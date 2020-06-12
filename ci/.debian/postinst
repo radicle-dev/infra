@@ -3,53 +3,18 @@ set -eou pipefail
 
 mkdir -p /etc/buildkite-hooks/hooks
 
-link_hooks() {
-  for hook in pre-checkout command pre-exit
-  do
-    hook_path=/etc/buildkite-hooks/hooks/${hook}
-    if [[ -e "${hook_path}" ]]
-    then
-      echo "${hook_path}" exists
-      exit 1
-    fi
+for hook in pre-checkout command pre-exit
+do
+  hook_path=/etc/buildkite-hooks/hooks/${hook}
+  if [[ -e "${hook_path}" ]]
+  then
+    echo "${hook_path}" exists
+    exit 1
+  fi
 
-    echo '#!/usr/bin/env bash' > ${hook_path}
-    echo "exec \"/var/lib/buildkite-hooks/bin/buildkite-${hook}-hook\"" >> ${hook_path}
-  done
-}
+  echo '#!/usr/bin/env bash' > ${hook_path}
+  echo "exec \"/var/lib/buildkite-hooks/bin/buildkite-${hook}-hook\"" >> ${hook_path}
+done
 
-
-services() {
-    systemctl daemon-reload
-
-    local units=(
-        docker
-        zockervols.socket
-        docker-volume-prune.timer
-        docker-system-prune.timer
-    )
-
-    local -i cpus agents
-
-    cpus=$(nproc)
-    cpus=$((cpus < 2 ? 2 : cpus))
-
-    agents=$((cpus / 2))
-    for i in $(seq 0 $((agents - 1)))
-    do
-        units+=("buildkite-agent@${i}")
-    done
-
-    for unit in "${units[@]}"
-    do
-        for cmd in enable restart
-        do
-            systemctl $cmd "$unit"
-        done
-    done
-}
-
-sops --decrypt --in-place /etc/buildkite-hooks/secrets.env
-sops --decrypt --in-place /etc/systemd/system/buildkite-agent@.service.d/token.env
-
-services
+systemctl daemon-reload
+systemctl restart --state=active 'buildkite-agent@*'
