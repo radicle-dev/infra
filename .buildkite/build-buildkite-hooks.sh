@@ -20,6 +20,10 @@ test/test-cmd-timeout
 echo "--- cargo deb"
 cargo deb --deb-version="${version}"
 
+mkdir -p ../artifacts
+cp "../target/debian/${deb}" ../artifacts
+cp "../target/debian/${deb}" ../artifacts/buildkite-hooks_amd64.deb
+
 if [[ "$BUILDKITE_BRANCH" == "master" ]]
 then
     set +x
