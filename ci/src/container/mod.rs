@@ -148,7 +148,7 @@ pub trait Containeriser {
         Env: Iterator<Item = (S, S)>,
         S: AsRef<str>;
 
-    /// Build a container image
+    /// Build and push a container image
 
     fn build_image<Env, S>(
         &self,

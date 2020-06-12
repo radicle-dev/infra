@@ -77,7 +77,7 @@ pub struct Config {
     /// The fully-qualified name of a docker image to build as part of a build
     /// step
     #[structopt(long, env = "STEP_DOCKER_IMAGE")]
-    pub step_container_image: Option<String>,
+    pub step_container_image: Option<ContainerImageName>,
 
     /// Path to the Dockerfile (relative to the source repo) to use for building
     /// the step-container-image
@@ -106,6 +106,10 @@ pub struct Config {
     /// The branch being built
     #[structopt(long, env = "BUILDKITE_BRANCH")]
     pub branch: String,
+
+    /// The tag being built. Only set if a tag is built
+    #[structopt(long, env = "BUILDKITE_TAG")]
+    pub tag: MaybeEmpty<String>,
 
     /// The commit being built
     #[structopt(long, env = "BUILDKITE_COMMIT")]
@@ -301,4 +305,47 @@ impl From<&OsStr> for GoogleApplicationCredentials {
             Self::Json(PathBuf::from(s))
         }
     }
+}
+
+/// A valid container image name without the image tag.
+///
+/// ```rust
+/// # use buildkite_hooks::config::ContainerImageName;
+/// use std::str::FromStr;
+///
+/// let img = ContainerImageName::from_str("ubuntu").unwrap();
+/// assert_eq!(&img as &str, "ubuntu");
+///
+/// let img_result = ContainerImageName::from_str("ubuntu:18.04");
+/// assert!(img_result.is_err());
+/// ```
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContainerImageName(String);
+
+impl std::fmt::Display for ContainerImageName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
+}
+
+impl std::str::FromStr for ContainerImageName {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        const PATTERN: &str = r"\A[a-zA-Z][a-zA-Z0-9./_\-]*\z";
+        let regex = regex::Regex::new(PATTERN).unwrap();
+        if regex.is_match(s) {
+            Ok(ContainerImageName(String::from(s)))
+        } else {
+            Err(format!(
+                "Invalid container image name. Value did not match {}",
+                PATTERN
+            ))
+        }
+    }
+}
+
+impl std::ops::Deref for ContainerImageName {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target { &self.0 }
 }

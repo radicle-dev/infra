@@ -143,6 +143,7 @@ dependencies = [
  "libc",
  "log 0.4.8",
  "paw",
+ "regex",
  "signal-hook",
  "structopt",
  "url",
