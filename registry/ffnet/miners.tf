@@ -51,10 +51,22 @@ resource "kubernetes_deployment" "miner" {
           operator = "Exists"
         }
 
-        # We want mining pods to be spread evenly across all mining
-        # nodes. To achieve this we make mining pods anti affine to
-        # themselves.
+        # We want mining pods to only run on mining nodes and be spread
+        # evenly across those nodes. To achieve this we make mining
+        # pods anti affine to themselves.
         affinity {
+          node_affinity {
+            required_during_scheduling_ignored_during_execution {
+              node_selector_term {
+                match_expressions {
+                  key      = "mining"
+                  operator = "In"
+                  values   = ["true"]
+                }
+              }
+            }
+          }
+
           pod_anti_affinity {
             preferred_during_scheduling_ignored_during_execution {
               weight = 100
@@ -123,7 +135,7 @@ resource "google_container_node_pool" "mining" {
   provider   = google-beta
   cluster    = google_container_cluster.ffnet.name
   name       = "mining"
-  node_count = 1
+  node_count = 2
 
   node_config {
     preemptible  = true
@@ -139,6 +151,10 @@ resource "google_container_node_pool" "mining" {
       key    = "preemptible"
       value  = "true"
       effect = "NO_EXECUTE"
+    }
+
+    labels = {
+      mining = "true"
     }
   }
 
