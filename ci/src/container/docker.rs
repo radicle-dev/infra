@@ -258,7 +258,7 @@ fn render_mount_arg(mount: &Mount) -> String {
             size_in_bytes,
             mode,
         } => format!(
-            "--mount=type=tmpfs,dst={},tmpfs-size={},tmpfs-mode={:o}",
+            "--tmpfs={}:size={},mode={:o},exec",
             dst.display(),
             size_in_bytes,
             mode
