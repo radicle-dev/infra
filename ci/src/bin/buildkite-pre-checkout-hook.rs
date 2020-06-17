@@ -11,11 +11,13 @@ use buildkite_hooks::{cmd::CommandExt, config::Config};
 fn main(cfg: Config) -> Result<(), Error> {
     env_logger::init();
 
-    decrypt_repo_secrets(&cfg)?;
-
     fs::create_dir_all(&cfg.checkout_path)?;
 
-    own_checkout_path(&cfg)
+    own_checkout_path(&cfg)?;
+
+    decrypt_repo_secrets(&cfg)?;
+
+    Ok(())
 }
 
 fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
