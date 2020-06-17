@@ -4,10 +4,7 @@ use failure::Error;
 use log::{debug, info};
 use paw;
 
-use buildkite_hooks::{
-    cmd::CommandExt,
-    config::{Config, GoogleApplicationCredentials},
-};
+use buildkite_hooks::{cmd::CommandExt, config::Config};
 
 #[paw::main]
 
@@ -37,7 +34,7 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
                 "--decrypt",
             ]);
 
-            if let GoogleApplicationCredentials::Json(path) = &cfg.google_application_credentials {
+            if let Some(path) = &cfg.google_application_credentials {
                 sops.env("GOOGLE_APPLICATION_CREDENTIALS", path);
             }
 
