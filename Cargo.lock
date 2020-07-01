@@ -140,6 +140,7 @@ dependencies = [
  "env_logger 0.7.1",
  "failure",
  "failure_derive",
+ "lazy_static",
  "libc",
  "log 0.4.8",
  "paw",

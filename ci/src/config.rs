@@ -332,8 +332,10 @@ impl std::str::FromStr for ContainerImageName {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const PATTERN: &str = r"\A[a-zA-Z][a-zA-Z0-9./_\-]*\z";
-        let regex = regex::Regex::new(PATTERN).unwrap();
-        if regex.is_match(s) {
+        lazy_static::lazy_static! {
+            static ref REGEX: regex::Regex = regex::Regex::new(PATTERN).unwrap();
+        }
+        if REGEX.is_match(s) {
             Ok(ContainerImageName(String::from(s)))
         } else {
             Err(format!(
