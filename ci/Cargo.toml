@@ -28,6 +28,7 @@ copyright = "2020 Kim Altintop, Monadic GmbH"
 depends = "$auto, buildkite-agent, containerd.io, docker-ce-cli, kata-proxy, kata-runtime, kata-shim, sops, zockervols"
 priority = "optional"
 maintainer-scripts = ".debian"
+conf-files = ["/etc/buildkite-hooks/buildkite-agent.cfg"]
 assets = [
     ["usr/bin/*", "usr/bin/", "755"],
     ["target/release/buildkite-command-hook", "var/lib/buildkite-hooks/bin/", "755"],
