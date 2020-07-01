@@ -27,7 +27,7 @@ users = "0.9"
 [package.metadata.deb]
 maintainer = "Monadic GmbH <team@monadic.xyz>"
 copyright = "2020 Kim Altintop, Monadic GmbH"
-depends = "$auto, buildkite-agent, containerd.io, docker-ce-cli, kata-proxy, kata-runtime, kata-shim, sops, zockervols"
+depends = "$auto, buildkite-agent, containerd.io, docker-ce-cli, kata-proxy, kata-runtime, kata-shim, jq, sops, zockervols"
 priority = "optional"
 maintainer-scripts = ".debian"
 conf-files = ["/etc/buildkite-hooks/buildkite-agent.cfg"]
