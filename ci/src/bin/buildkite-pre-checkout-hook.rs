@@ -25,6 +25,7 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
         info!("Decrypting secrets");
 
         let secrets_yaml = cfg.checkout_path.join(".buildkite/secrets.yaml");
+        let secrets_output = cfg.checkout_path.join(".secrets");
 
         if secrets_yaml.exists() {
             let mut sops = Command::new("sops");
@@ -32,7 +33,7 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
                 "--output-type",
                 "dotenv",
                 "--output",
-                ".secrets",
+                secrets_output.to_str().unwrap(),
                 "--decrypt",
             ]);
 
