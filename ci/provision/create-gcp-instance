@@ -9,8 +9,8 @@ set -eou pipefail
 # Comma separated list of key=value pairs.
 : "${BUILDKITE_AGENT_TAGS:="queue=agent-experiment"}"
 
-# The buildkite build ID to fetch
-: "${BUILDKITE_PACKAGE_JOB:="706c531a-4a2f-4bc4-aee3-4823b8c3f9c1"}"
+# Buildkite job ID to fetch the package from
+: "${BUILDKITE_PACKAGE_JOB:="2200a4ab-bd8f-46ba-a2a0-73b3ad6d3a65"}"
 
 cloud_init="$(dirname "${BASH_SOURCE[0]}")/cloud-init.yaml"
 
