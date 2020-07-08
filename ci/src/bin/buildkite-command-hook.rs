@@ -141,6 +141,7 @@ fn main_(cfg: Config) -> Result<(), Error> {
     // Build step container image
     match (&cfg.step_container_dockerfile, &cfg.step_container_image) {
         (Some(ref dockerfile), Some(ref image_name)) => {
+            println!("--- Build container image artifact");
             let tag = match &cfg.tag as &Option<String> {
                 Some(ref tag) => tag,
                 None => &cfg.commit,
