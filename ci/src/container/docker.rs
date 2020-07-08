@@ -158,6 +158,7 @@ impl Containeriser for Docker {
                 .iter()
                 .map(render_mount_arg),
             )
+            .arg("--workdir=/build")
             .arg("--env=IMG_DISABLE_EMBEDDED_RUNC=1")
             .arg(IMG_IMAGE)
             .arg("build")
