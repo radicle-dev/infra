@@ -29,13 +29,9 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
 
         if secrets_yaml.exists() {
             let mut sops = Command::new("sops");
-            sops.args(&[
-                "--output-type",
-                "dotenv",
-                "--output",
-                secrets_output.to_str().unwrap(),
-                "--decrypt",
-            ]);
+            sops.args(&["--output-type", "dotenv", "--output"]);
+            sops.arg(secrets_output);
+            sops.arg("--decrypt");
 
             if let Some(path) = &cfg.google_application_credentials {
                 sops.env("GOOGLE_APPLICATION_CREDENTIALS", path);
