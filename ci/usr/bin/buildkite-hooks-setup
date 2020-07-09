@@ -125,6 +125,12 @@ main() {
     echo "## Setting up storage"
     setup_storage "$1"
 
+    echo "## Configuring docker credentials"
+    sudo \
+      --user buildkite-agent \
+      --non-interactive \
+      gcloud auth configure-docker --quiet
+
     echo "## Decrypting and installing buildkite agent token"
     sops --decrypt \
       /usr/share/buildkite-hooks/buildkite-agent-token.env \

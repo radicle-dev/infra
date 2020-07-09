@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, fmt, ops::Deref, path::PathBuf, str::FromStr};
+use std::{fmt, ops::Deref, path::PathBuf, str::FromStr};
 
 use failure::Fail;
 use structopt::StructOpt;
@@ -51,13 +51,8 @@ pub struct Config {
     /// Path to the GCP service account credentials file.
     ///
     /// Empty value or the string "instance" to use instance credentials.
-    #[structopt(
-        long,
-        default_value = "/etc/gce/buildkite-agent.json",
-        env = "GOOGLE_APPLICATION_CREDENTIALS",
-        parse(from_os_str)
-    )]
-    pub google_application_credentials: GoogleApplicationCredentials,
+    #[structopt(long, env = "GOOGLE_APPLICATION_CREDENTIALS", parse(from_os_str))]
+    pub google_application_credentials: Option<PathBuf>,
 
     /// Set the Docker volume driver.
     ///
@@ -288,23 +283,6 @@ fn getpwnam(username: &str) -> Result<User, IdMapError> {
 
 fn getgrnam(groupname: &str) -> Result<Group, IdMapError> {
     get_group_by_name(groupname).ok_or_else(|| IdMapError::NoSuchGroup(groupname.to_string()))
-}
-
-#[derive(Clone, Debug)]
-
-pub enum GoogleApplicationCredentials {
-    Instance,
-    Json(PathBuf),
-}
-
-impl From<&OsStr> for GoogleApplicationCredentials {
-    fn from(s: &OsStr) -> Self {
-        if s.is_empty() || s == "instance" {
-            Self::Instance
-        } else {
-            Self::Json(PathBuf::from(s))
-        }
-    }
 }
 
 /// A valid container image name without the image tag.

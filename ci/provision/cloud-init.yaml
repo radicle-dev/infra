@@ -66,7 +66,7 @@ write_files:
     }
 
     buildkite_package_job=$(get_instance_metadata "buildkite-package-job")
-    wget "http://builds.radicle.xyz/infra/${buildkite_package_job}/target/debian/buildkite-hooks_amd64.deb"
+    wget "http://builds.radicle.xyz/infra/${buildkite_package_job}/artifacts/buildkite-hooks_amd64.deb"
     sudo apt-get -y install "./buildkite-hooks_amd64.deb"
 
     buildkite_agent_tags=$(get_instance_metadata "buildkite-agent-tags")

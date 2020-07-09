@@ -4,7 +4,7 @@ pub use crate::container::*;
 use crate::{cmd, cmd::CommandExt, timeout::Timeout};
 
 pub const IMG_IMAGE: &str = "gcr.io/opensourcecoin/img@sha256:\
-                             6a8661fc534f2341a42d6440e0c079aeaa701fe9d6c70b12280a1f8ce30b700c";
+                             24252f659024808246d8c4d674f19d8d923688cd5f857f4a607fe8dbf42c491c";
 
 #[derive(Clone)]
 
@@ -158,6 +158,8 @@ impl Containeriser for Docker {
                 .iter()
                 .map(render_mount_arg),
             )
+            .arg("--workdir=/build")
+            .arg("--env=IMG_DISABLE_EMBEDDED_RUNC=1")
             .arg(IMG_IMAGE)
             .arg("build")
             .args(

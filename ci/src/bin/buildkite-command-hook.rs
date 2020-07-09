@@ -14,7 +14,6 @@ use buildkite_hooks::{
     cmd::CommandExt,
     config::Config,
     container::docker::*,
-    env,
     timeout::Timeout,
 };
 
@@ -121,7 +120,7 @@ fn main_(cfg: Config) -> Result<(), Error> {
                     mounts.build_cache,
                     mounts.buildkite_agent,
                 ],
-                env: env::safe_buildkite_vars().chain(env::build_vars()),
+                env: build_env_vars(&cfg),
                 runtime: if cfg.is_trusted_build() {
                     Runtime::Runc
                 } else {
@@ -142,6 +141,7 @@ fn main_(cfg: Config) -> Result<(), Error> {
     // Build step container image
     match (&cfg.step_container_dockerfile, &cfg.step_container_image) {
         (Some(ref dockerfile), Some(ref image_name)) => {
+            println!("--- Build container image artifact");
             let tag = match &cfg.tag as &Option<String> {
                 Some(ref tag) => tag,
                 None => &cfg.commit,
@@ -314,9 +314,36 @@ where
                 context: dockerfile.parent().unwrap_or(&Path::new(".")).to_path_buf(),
                 sources: cfg.checkout_path.clone(),
                 cache: cache.clone(),
-                build_args: env::safe_buildkite_vars(),
+                build_args: build_env_vars(cfg),
             },
             timeout,
         )
         .map_err(|e| e.into())
+}
+
+/// Environment variables of the current process that are passed to the job and
+/// image builder container.
+///
+/// Includes `CI` and everything that starts with `BUILD_` or `BUILDKITE_` and
+/// is not sensitive. If `cfg` is a trusted build we also include
+/// `BUILDKITE_AGENT_ACCESS_TOKEN`.
+fn build_env_vars(cfg: &Config) -> impl Iterator<Item = (String, String)> {
+    let is_trusted_build = cfg.is_trusted_build();
+    std::env::vars().filter(move |(k, _)| {
+        if k == "CI" {
+            true
+        } else if k.starts_with("BUILD_") {
+            true
+        } else if k.starts_with("BUILDKITE_") {
+            if k.starts_with("BUILDKITE_S3") {
+                false
+            } else if k == "BUILDKITE_AGENT_ACCESS_TOKEN" {
+                is_trusted_build
+            } else {
+                true
+            }
+        } else {
+            false
+        }
+    })
 }

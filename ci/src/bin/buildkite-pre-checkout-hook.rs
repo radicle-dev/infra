@@ -4,21 +4,20 @@ use failure::Error;
 use log::{debug, info};
 use paw;
 
-use buildkite_hooks::{
-    cmd::CommandExt,
-    config::{Config, GoogleApplicationCredentials},
-};
+use buildkite_hooks::{cmd::CommandExt, config::Config};
 
 #[paw::main]
 
 fn main(cfg: Config) -> Result<(), Error> {
     env_logger::init();
 
-    decrypt_repo_secrets(&cfg)?;
-
     fs::create_dir_all(&cfg.checkout_path)?;
 
-    own_checkout_path(&cfg)
+    own_checkout_path(&cfg)?;
+
+    decrypt_repo_secrets(&cfg)?;
+
+    Ok(())
 }
 
 fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
@@ -26,18 +25,15 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
         info!("Decrypting secrets");
 
         let secrets_yaml = cfg.checkout_path.join(".buildkite/secrets.yaml");
+        let secrets_output = cfg.checkout_path.join(".secrets");
 
         if secrets_yaml.exists() {
             let mut sops = Command::new("sops");
-            sops.args(&[
-                "--output-type",
-                "dotenv",
-                "--output",
-                ".secrets",
-                "--decrypt",
-            ]);
+            sops.args(&["--output-type", "dotenv", "--output"]);
+            sops.arg(secrets_output);
+            sops.arg("--decrypt");
 
-            if let GoogleApplicationCredentials::Json(path) = &cfg.google_application_credentials {
+            if let Some(path) = &cfg.google_application_credentials {
                 sops.env("GOOGLE_APPLICATION_CREDENTIALS", path);
             }
 
