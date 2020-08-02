@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -eou pipefail
+
+: "${GCE_INSTANCE_NAME:=buildkite-agent-test-$(whoami)}"
+: "${GCE_ZONE:=europe-west1-c}"
+: "${GCE_MACHINE_TYPE:=c2-standard-8}"
+
+# Comma separated list of key=value pairs.
+: "${BUILDKITE_AGENT_TAGS:="queue=agent-experiment"}"
+
+# Buildkite job ID to fetch the package from
+: "${BUILDKITE_PACKAGE_JOB:="2200a4ab-bd8f-46ba-a2a0-73b3ad6d3a65"}"
+
+cloud_init="$(dirname "${BASH_SOURCE[0]}")/cloud-init.yaml"
+
+# We’re using a custom delimiter to allow for the commas in the
+# buildkite-agent-tags value. See
+# https://cloud.google.com/sdk/gcloud/reference/topic/escaping
+metadata="^%^buildkite-agent-tags=${BUILDKITE_AGENT_TAGS}%buildkite-package-job=${BUILDKITE_PACKAGE_JOB}"
+
+gcloud compute instances create \
+    "${GCE_INSTANCE_NAME}" \
+    --project opensourcecoin \
+    --machine-type="${GCE_MACHINE_TYPE}" \
+    --image-project="ubuntu-os-cloud" \
+    --image-family="ubuntu-2004-lts" \
+    --zone="${GCE_ZONE}" \
+    --service-account="buildkite-agent@opensourcecoin.iam.gserviceaccount.com" \
+    --scopes="cloud-platform" \
+    --local-ssd="interface=nvme" \
+    --preemptible \
+    --metadata-from-file="user-data=${cloud_init}" \
+    --metadata="$metadata"

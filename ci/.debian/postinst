@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+mkdir -p /etc/buildkite-hooks/hooks
+
+for hook in pre-checkout command pre-exit
+do
+  hook_path=/etc/buildkite-hooks/hooks/${hook}
+  if [[ -e "${hook_path}" ]]
+  then
+    echo "${hook_path}" exists
+    exit 1
+  fi
+
+  echo '#!/usr/bin/env bash' > ${hook_path}
+  echo "exec \"/var/lib/buildkite-hooks/bin/buildkite-${hook}-hook\"" >> ${hook_path}
+done
+
+systemctl daemon-reload
+systemctl restart --state=active 'buildkite-agent@*'

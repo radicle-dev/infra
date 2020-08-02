@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+for hook in pre-checkout command pre-exit
+do
+  rm "/etc/buildkite-hooks/hooks/${hook}"
+done

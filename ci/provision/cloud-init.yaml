@@ -1,0 +1,77 @@
+#cloud-config
+groups:
+- 'buildkite-agent'
+- 'buildkite-builder'
+- docker
+
+users:
+- default
+- name: 'buildkite-agent'
+  primary_group: 'buildkite-agent'
+  groups: docker,buildkite-builder
+  homedir: /var/lib/buildkite-agent
+- name: 'buildkite-builder'
+  primary_group: 'buildkite-builder'
+  system: true
+
+apt:
+  sources:
+    buildkite-agent.list:
+      source: 'deb https://apt.buildkite.com/buildkite-agent stable main'
+      keyid: 32A37959C2FA5C3C99EFBC32A79206696452D198
+      keyserver: keys.gnupg.net
+    docker.list:
+      source: 'deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable'
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      keyserver: keys.gnupg.net
+    google-cloud-sdk.list:
+      source: 'deb http://packages.cloud.google.com/apt cloud-sdk main'
+      keyid: 54A647F9048D5688D7DA2ABE6A030B21BA07F4FB
+      keyserver: keys.gnupg.net
+    kata-containers.list:
+      source: 'deb http://download.opensuse.org/repositories/home:/katacontainers:/releases:/x86_64:/master/xUbuntu_18.04/ /'
+      keyid: 9FDC0CB63708CF803696E2DCD0B37B826063F3ED
+    sops.list:
+      source: 'deb https://dl.bintray.com/oscoin/sops buster main'
+      keyid: 8756C4F765C9AC3CB6B85D62379CE192D401AB61
+      keyserver: keys.gnupg.net
+    zockervols.list:
+      source: 'deb https://dl.bintray.com/oscoin/zockervols buster main'
+      keyid: 8756C4F765C9AC3CB6B85D62379CE192D401AB61
+      keyserver: keys.gnupg.net
+    buildkite-hooks.list:
+      source: 'deb https://dl.bintray.com/oscoin/buildkite-hooks buster main'
+      keyid: 8756C4F765C9AC3CB6B85D62379CE192D401AB61
+      keyserver: keys.gnupg.net
+
+write_files:
+- path: /tmp/bootstrap
+  content: |
+    set -exuo pipefail
+    cd /tmp
+
+    platform="$(cloud-init query platform)"
+    if [[ "${platform}" == "nocloud" ]]; then
+      exit 0
+    fi
+
+    if [[ "${platform}" != "gce" ]]; then
+      echo "Unsupported cloud platform ${platform}"
+      exit 1
+    fi
+
+    function get_instance_metadata () {
+      curl -f -H "Metadata-Flavor: Google" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/attributes/$1"
+    }
+
+    buildkite_package_job=$(get_instance_metadata "buildkite-package-job")
+    wget "http://builds.radicle.xyz/infra/${buildkite_package_job}/artifacts/buildkite-hooks_amd64.deb"
+    sudo apt-get -y install "./buildkite-hooks_amd64.deb"
+
+    buildkite_agent_tags=$(get_instance_metadata "buildkite-agent-tags")
+    echo "tags=\"${buildkite_agent_tags}\"" >> /etc/buildkite-hooks/buildkite-agent.cfg
+
+    buildkite-hooks-setup /dev/nvme0n1
+runcmd:
+- ["/bin/bash", "/tmp/bootstrap"]

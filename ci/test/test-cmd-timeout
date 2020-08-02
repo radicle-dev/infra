@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if ! cargo run --bin=test_cmd -- sleep 6
+then
+    exit 0
+else
+    exit 42
+fi

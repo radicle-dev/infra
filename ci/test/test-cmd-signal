@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+kill_with()  {
+    local -r signal=$1
+
+    cargo run --bin=test_cmd -- sleep 10&
+
+    sleep 1
+    echo "Killing command with signal $signal"
+    kill -s "$signal" %1
+
+    if ! wait %1
+    then
+        exit 42
+    fi
+}
+
+# make sure we're not killing rustc
+cargo build
+
+kill_with "TERM"
+kill_with "INT"
+kill_with "QUIT"

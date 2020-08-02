@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -eou pipefail
 
+source ./.buildkite/common.sh
+
+prepare_cache
+
 version="$(cargo read-manifest --manifest-path=zockervols/Cargo.toml|jq -r .version)+${BUILDKITE_BUILD_NUMBER}"
 deb="zockervols_${version}_amd64.deb"
 
 cargo deb --package zockervols --deb-version="${version}"
+
+mkdir -p artifacts
+cp "target/debian/${deb}" artifacts
 
 if [[ "$BUILDKITE_BRANCH" == "master" ]]
 then

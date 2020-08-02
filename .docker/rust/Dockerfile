@@ -43,4 +43,3 @@ RUN set -eux; \
 ENV SCCACHE_DIR=/cache/sccache \
     RUSTC_WRAPPER=sccache \
     CARGO_HOME=/cache/cargo
-
