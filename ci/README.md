@@ -136,31 +136,6 @@ Repositories making using of this feature must:
 
 [sops]: https://github.com/mozilla/sops
 
-## Build artifacts
-
-Artifacts uploaded via the [buildkite agent](https://buildkite.com/docs/pipelines/artifacts)
-are stored in a publicly readable Monadic-managed GCS bucket.
-
-Artifacts uploaded by a `master` (that is, `$BUILDKITE_PIPELINE_DEFAULT_BRANCH`)
-builds will have a predictable URL, e.g.:
-
-```
-https://builds.radicle.xyz/radicle-registry/master/$BUILDKITE_COMMIT/$ARTIFACT_PATH`
-```
-
-Artifacts uploaded by a git tag build will be uploaded to
-
-```
-https://builds.radicle.xyz/radicle-registry/$BUILDKITE_TAG/$ARTIFACT_PATH
-```
-
-All other artifacts are scoped by `$BUILDKITE_JOB_ID`, and best discovered
-through the Buildkite UI or API. E.g.:
-
-```
-https://builds.radicle.xyz/radicle-registry/b2d9d6fd-cc6a-4c44-90e4-b07b5c50ee4c/$ARTIFACT_PATH`
-```
-
 ## macOS build agents
 
 For now we have one macOS host, a 2018 6-core i5 Mac mini (19C57) with
