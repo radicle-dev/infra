@@ -2,10 +2,6 @@ locals {
   project = "radicle-registry-dev"
 }
 
-module "devnet" {
-  source = "./devnet"
-}
-
 module "ffnet" {
   source  = "./ffnet"
   project = local.project

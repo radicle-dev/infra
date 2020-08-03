@@ -33,7 +33,7 @@ resource "google_container_node_pool" "pool-1" {
   provider   = google-beta
   cluster    = google_container_cluster.ffnet.name
   name       = "pool-1"
-  node_count = 2
+  node_count = 1
   node_config {
     machine_type = "n1-standard-2"
   }
