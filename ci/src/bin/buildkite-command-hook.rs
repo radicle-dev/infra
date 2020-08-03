@@ -6,7 +6,7 @@ use std::{
 };
 
 use failure::{format_err, Error};
-use log::info;
+use log::{debug, info};
 use paw;
 
 use buildkite_hooks::{
@@ -36,6 +36,8 @@ fn main(cfg: Config) {
 }
 
 fn main_(cfg: Config) -> Result<(), Error> {
+    decrypt_repo_secrets(&cfg)?;
+
     let cfg = cfg.valid();
 
     let docker = Docker::new(&cfg.command_id());
@@ -346,4 +348,43 @@ fn build_env_vars(cfg: &Config) -> impl Iterator<Item = (String, String)> {
             false
         }
     })
+}
+
+/// Decrypt `.buildkite/secrets.yaml` with `sops` to `.secrets`.
+///
+/// Decrypting only happens for trusted builds (see [Config::is_trusted_build]).
+fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
+    if cfg.is_trusted_build() {
+        info!("Decrypting secrets");
+
+        let secrets_yaml = cfg.checkout_path.join(".buildkite/secrets.yaml");
+        let secrets_output = cfg.checkout_path.join(".secrets");
+        let sops_config = cfg.checkout_path.join(".sops.yaml");
+
+        if secrets_yaml.exists() {
+            let mut sops = Command::new("sops");
+
+            if let Some(path) = &cfg.google_application_credentials {
+                sops.env("GOOGLE_APPLICATION_CREDENTIALS", path);
+            }
+
+            sops.arg("--config")
+                .arg(sops_config)
+                .args(&["--output-type", "dotenv"])
+                .arg("--output")
+                .arg(secrets_output)
+                .arg("--decrypt")
+                .arg(secrets_yaml);
+
+            sops.safe()?.succeed().map_err(|e| e.into())
+        } else {
+            debug!("No .buildkite/secrets.yaml in repository");
+
+            Ok(())
+        }
+    } else {
+        info!("Build secrets not available for unstrusted builds");
+
+        Ok(())
+    }
 }
