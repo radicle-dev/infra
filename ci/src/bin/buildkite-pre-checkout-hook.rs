@@ -26,21 +26,24 @@ fn decrypt_repo_secrets(cfg: &Config) -> Result<(), Error> {
 
         let secrets_yaml = cfg.checkout_path.join(".buildkite/secrets.yaml");
         let secrets_output = cfg.checkout_path.join(".secrets");
+        let sops_config = cfg.checkout_path.join(".sops.yaml");
 
         if secrets_yaml.exists() {
             let mut sops = Command::new("sops");
-            sops.args(&["--output-type", "dotenv", "--output"]);
-            sops.arg(secrets_output);
-            sops.arg("--decrypt");
 
             if let Some(path) = &cfg.google_application_credentials {
                 sops.env("GOOGLE_APPLICATION_CREDENTIALS", path);
             }
 
-            sops.arg(secrets_yaml)
-                .safe()?
-                .succeed()
-                .map_err(|e| e.into())
+            sops.arg("--config")
+                .arg(sops_config)
+                .args(&["--output-type", "dotenv"])
+                .arg("--output")
+                .arg(secrets_output)
+                .arg("--decrypt")
+                .arg(secrets_yaml);
+
+            sops.safe()?.succeed().map_err(|e| e.into())
         } else {
             debug!("No .buildkite/secrets.yaml in repository");
 
