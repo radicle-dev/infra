@@ -29,7 +29,7 @@ apt:
       keyid: 54A647F9048D5688D7DA2ABE6A030B21BA07F4FB
       keyserver: keys.gnupg.net
     kata-containers.list:
-      source: 'deb http://download.opensuse.org/repositories/home:/katacontainers:/releases:/x86_64:/master/xUbuntu_18.04/ /'
+      source: 'deb https://download.opensuse.org/repositories/home:/katacontainers:/releases:/x86_64:/master/xUbuntu_20.04/ /'
       keyid: 9FDC0CB63708CF803696E2DCD0B37B826063F3ED
     sops.list:
       source: 'deb https://dl.bintray.com/oscoin/sops buster main'
