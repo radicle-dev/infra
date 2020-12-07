@@ -34,11 +34,13 @@ conf-files = ["/etc/buildkite-hooks/buildkite-agent.cfg"]
 assets = [
     ["usr/bin/*", "usr/bin/", "755"],
     ["target/release/buildkite-command-hook", "var/lib/buildkite-hooks/bin/", "755"],
+    ["target/release/buildkite-print-environment", "var/lib/buildkite-hooks/bin/", "755"],
     ["target/release/buildkite-pre-checkout-hook", "var/lib/buildkite-hooks/bin/", "755"],
     ["target/release/buildkite-pre-exit-hook", "var/lib/buildkite-hooks/bin/", "755"],
 
     ["etc/buildkite-hooks/buildkite-agent.cfg", "etc/buildkite-hooks/buildkite-agent.cfg", "644"],
     ["etc/buildkite-hooks/secrets.env", "etc/buildkite-hooks/secrets.env", "644"],
+    ["etc/buildkite-hooks/hooks/environment", "etc/buildkite-hooks/hooks/environment", "644"],
 
     ["etc/systemd/system/*.service", "etc/systemd/system/", "644"],
     ["etc/systemd/system/*.timer", "etc/systemd/system/", "644"],
