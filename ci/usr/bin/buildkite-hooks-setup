@@ -138,6 +138,7 @@ main() {
 
     echo "## Linking /etc/docker/daemon.json"
     ln -sf /usr/share/buildkite-hooks/docker-daemon.json /etc/docker/daemon.json
+    systemctl reload-or-restart docker.service
 
     echo "## Enabling systemd services"
     enable_systemd_services
