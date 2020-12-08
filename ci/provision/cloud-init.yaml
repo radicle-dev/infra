@@ -31,6 +31,7 @@ apt:
     kata-containers.list:
       source: 'deb https://download.opensuse.org/repositories/home:/katacontainers:/releases:/x86_64:/master/xUbuntu_20.04/ /'
       keyid: 9FDC0CB63708CF803696E2DCD0B37B826063F3ED
+      keyserver: keyserver.ubuntu.com
     sops.list:
       source: 'deb https://dl.bintray.com/oscoin/sops buster main'
       keyid: 8756C4F765C9AC3CB6B85D62379CE192D401AB61
