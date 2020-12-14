@@ -145,6 +145,9 @@ pub struct Config {
 
     #[structopt(long, env = "BUILDKITE_PIPELINE_DEFAULT_BRANCH")]
     pub buildkite_pipeline_default_branch: String,
+
+    #[structopt(long, env = "BUILDKITE_JOB_ID")]
+    pub buildkite_job_id: String,
 }
 
 impl Config {
