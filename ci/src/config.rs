@@ -15,7 +15,7 @@ pub const MAX_BUILD_CACHE_QUOTA_GIB: u8 = 50;
 
 pub const MAX_IMG_CACHE_QUOTA_GIB: u8 = 50;
 
-pub const MAX_TMP_SIZE_BYTES: u32 = 500_000_000;
+pub const MAX_TMP_SIZE_BYTES: u32 = 1_000_000_000;
 
 #[derive(Clone, Debug, StructOpt)]
 
@@ -37,7 +37,7 @@ pub struct Config {
     pub img_cache_quota_gib: u8,
 
     /// Size in bytes of the tmpfs mount for build containers
-    #[structopt(long, default_value = "200000000")]
+    #[structopt(long, env = "TMP_SIZE_BYTES", default_value = "1000000000")]
     pub tmp_size_bytes: u32,
 
     /// The username to drop privileges to for build containers
