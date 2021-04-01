@@ -326,15 +326,13 @@ where
 /// Environment variables of the current process that are passed to the job and
 /// image builder container.
 ///
-/// Includes `CI` and everything that starts with `BUILD_` or `BUILDKITE_` and
-/// is not sensitive. If `cfg` is a trusted build we also include
-/// `BUILDKITE_AGENT_ACCESS_TOKEN`.
+/// Includes `CI`, `BUILDKITE`, and everything that starts with `BUILD_` or
+/// `BUILDKITE_` and is not sensitive. If `cfg` is a trusted build we also
+/// include `BUILDKITE_AGENT_ACCESS_TOKEN`.
 fn build_env_vars(cfg: &Config) -> impl Iterator<Item = (String, String)> {
     let is_trusted_build = cfg.is_trusted_build();
     std::env::vars().filter(move |(k, _)| {
-        if k == "CI" {
-            true
-        } else if k.starts_with("BUILD_") {
+        if k == "CI" || k == "BUILDKITE" || k.starts_with("BUILD_") {
             true
         } else if k.starts_with("BUILDKITE_") {
             if k.starts_with("BUILDKITE_S3") {
