@@ -9,7 +9,30 @@ if [[ "${BUILDKITE_REPO}" != "https://github.com/radicle-dev/radicle-upstream" ]
   exit 1
 fi
 
-if [[ "${BUILDKITE_BRANCH}" != "master" ]]; then
+if [[ "${BUILDKITE_BRANCH}" != "master" && -z "${BUILDKITE_TAG}" ]]; then
   echo "Branch not allowed: ${BUILDKITE_BRANCH}"
   exit 1
 fi
+
+# Artifacts
+#
+# We're storing artifacts in our own GCS bucket in order to get predictable
+# download URLs. However, in order to not having to deal with sanitising branch
+# names, this applies only to `master` (that is,
+# BUILDKITE_PIPELINE_DEFAULT_BRANCH) builds. All other branches are scoped by
+# BUILDKITE_JOB_ID, as is the default.
+#
+# Note that artifacts can be overwritten when triggering a rebuild. This is no
+# different from managed artifact storage.
+#
+if [[ -n "${BUILDKITE_TAG}" ]]
+then
+    declare -r artifact_scope="${BUILDKITE_TAG}"
+elif [[ "${BUILDKITE_BRANCH}" == "${BUILDKITE_PIPELINE_DEFAULT_BRANCH}" ]]
+then
+    declare -r artifact_scope="${BUILDKITE_PIPELINE_DEFAULT_BRANCH}/${BUILDKITE_COMMIT}"
+else
+    declare -r artifact_scope="$BUILDKITE_JOB_ID"
+fi
+export BUILDKITE_GS_APPLICATION_CREDENTIALS=/etc/gce/cred.json
+export BUILDKITE_ARTIFACT_UPLOAD_DESTINATION="gs://builds.radicle.xyz/${BUILDKITE_PIPELINE_SLUG}/${artifact_scope}"

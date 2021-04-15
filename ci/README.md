@@ -147,7 +147,7 @@ official `radicle-upstream` repository at the moment.
 
 ### Agent setup
 
-1. Buy or rent a Mac and set up latest macOS (Catalina 10.15.2)
+1. Get a Mac and set up latest macOS (Big Sur 11.2.3)
 
 2. Perform default user setup (part of macOS when you first turn it on),
    call the user: `buildkite`
@@ -189,7 +189,79 @@ official `radicle-upstream` repository at the moment.
 10. Install some useful terminal utilities:
   `brew install htop neovim`
 
-11. Set up Buildkite. The agent token can be retreived from the
+
+11. Set up [Google cloud SDK][gcloud]:
+```
+curl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-336.0.0-darwin-x86_64.tar.gz --output google-cloud-sdk-336.0.0-darwin-x86_64.tar.gz
+tar -xf google-cloud-sdk-336.0.0-darwin-x86_64.tar.gz
+cd google-cloud-sdk
+./install.sh
+```
+
+12. Create a Service IAM account for the build host and download the API key
+    from the [Google Cloud Platform][gcp]:
+```
+  Hamburger menu ->
+    IAM & Admin ->
+    Service Accounts ->
+    Create service account ->
+      Service account name:        buildkite-mac-n-cheese
+      Service account description: buildkite account for mac build host to
+                                   upload tagged artefacts
+      -> DONE
+
+  Select "buildkite-mac-n-cheese@opensourcecoin.iam.gserviceaccount.com" ->
+    KEYS ->
+    ADD KEY ->
+    JSON ->
+    CREATE
+
+    This will download the key in json format to your local machine:
+      opensourcecoin-cb5de90f94af.json
+
+  Hamburger menu ->
+    Cloud Storage ->
+    Browser ->
+    builds.radicle.xyz ->
+    Permissions ->
+    ADD ->
+      New members:   buildkite-mac-n-cheese@opensourcecoin.iam.gserviceaccount.com
+      Select a role: Storage Object Admin
+
+      -> SAVE
+```
+
+13. Transfer the opensourcecoin-cb5de90f94af.json file via scp to the build
+    host and move it to the proper location:
+```
+scp opensourcecoin-cb5de90f94af.json buildkite@192.168.1.231:/Users/buildkite
+
+ssh buildkite@192.168.1.231
+
+sudo mkdir /etc/gce
+sudo mv opensourcecoin-cb5de90f94af.json /etc/gce/cred.json
+chmod 600 /etc/gce/opensourcecoin-cb5de90f94af.json
+```
+
+19. Set up Apple notarization certificates:
+
+  - Developer ID Application certificate
+  - Your personal Apple developer private key
+
+In "Keychain Access" edit the attributes of each certificate -> Access Control
+-> "Allow all applications to access this item".
+
+20. Create an [app-specific password][appspecific] in your Apple developer
+    account and store the password in keychain:
+
+```
+security add-generic-password -a "rudolfs@monadic.xyz" -w REPLACE_THIS_WITH_THE_APP_SPECIFIC_PASSWORD -s "AC_PASSWORD"
+```
+
+In Keychain Access edit the attributes the AC_PASSWORD entry
+-> Access Control -> "Allow all applications to access this item".
+
+21. Set up Buildkite. The agent token can be retreived from the
     [buildkite website][buildkite] under `Agents` → `Agent Token`
     → `Reveal Agent Token`
 
@@ -198,15 +270,15 @@ brew tap buildkite/buildkite
 brew install --token='!!!FILL_IN_AGENT_TOKEN!!!' buildkite-agent
 ```
 
-12. Configure buildkite by copying config files from this repo `macos/` to the
+22. Configure buildkite by copying config files from this repo `macos/` to the
     relevant paths:
     - `/usr/local/etc/buildkite-agent` (remember to fill in agent token!)
     - `/usr/local/etc/buildkite-agent/hooks/environment`
 
-13. Create the build folder:
+23. Create the build folder:
     `mkdir -p /Users/buildkite/buildkite-cache`
 
-14. Set up radicle-upstream build dependencies
+24. Set up radicle-upstream build dependencies
 ```
 # rust toolchain
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -217,11 +289,15 @@ brew install pkgconfig
 brew install yarn
 ```
 
-15. Start Buildkite agent (this should also make sure it's started on reboot)
+25. Start Buildkite agent (this should also make sure it's started on reboot)
 ```
 brew services start buildkite/buildkite/buildkite-agent
 ```
 
 
+
+[appspecific]: https://support.apple.com/en-us/HT204397
 [caffeine]: http://lightheadsw.com/caffeine
 [buildkite]: https://buildkite.com/organizations/monadic/agents
+[gcloud]: https://cloud.google.com/sdk/docs/quickstart
+[gcp]: https://console.cloud.google.com/home/dashboard?project=opensourcecoin
