@@ -8,7 +8,7 @@ if [[ "${BUILDKITE_REPO}" != "https://github.com/radicle-dev/radicle-upstream" ]
   exit 1
 fi
 
-if [[ -n "${BUILDKITE_PULL_REQUEST_REPO}" && "${BUILDKITE_PULL_REQUEST_REPO}" != "https://github.com/radicle-dev/radicle-upstream" ]]; then
+if [[ -n "${BUILDKITE_PULL_REQUEST_REPO}" && "${BUILDKITE_PULL_REQUEST_REPO}" != "git://github.com/radicle-dev/radicle-upstream.git" ]]; then
   echo "Pull request from repository not allowed: ${BUILDKITE_PULL_REQUEST_REPO}"
   exit 1
 fi
